@@ -1,1 +1,1 @@
-# Implementing-Algorand-Byzantine-agreement-BA-in-DistAlgo
+# Implementing-Algorand-Byzantine-agreement-BA*-in-DistAlgo
