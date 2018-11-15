@@ -1,0 +1,14 @@
+class Block(object):
+    def __init__(self, x):
+        self.__val = x
+        self.__next = None
+        self.__prev = None
+
+    def get_value(self):
+        return self.__val
+
+    def set_prev_block(self, block):
+        self.__prev = block
+
+    def set_next_block(self, block):
+        self.__next = block

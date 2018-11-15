@@ -1,0 +1,7 @@
+import pickle
+import hashlib
+
+def H(block = None):
+    serialized_block = pickle.dumps(block)
+    h = hashlib.sha256(serialized_block)
+    return h.digest()
