@@ -2,7 +2,7 @@ import random
 
 class Controller(process):
 
-    def setupawaitprocesses, lambda_t, context):
+    def setup(processes, lambda_t, context):
         self.ps = processes
         self.lambda_t = lambda_t
         self.context = context

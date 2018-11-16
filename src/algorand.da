@@ -14,6 +14,10 @@ class User(process):
     def run():
         await(received(('done',), from_=parent()))
 
+
+    def process_message(ctx, msg):
+        votes = verifysort(msg)
+
 def initial_context():
     ctx = Context()
     starting_block = Block('start')
