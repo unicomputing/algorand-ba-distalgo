@@ -1,3 +1,6 @@
+# https://people.csail.mit.edu/nickolai/papers/gilad-algorand-eprint.pdf
+# The Context metadata is Implemented as per section 7.1 in the paper.
+from H import H as Hfunction
 class Context():
     def __init__(self):
         self.__last_block = None
@@ -7,8 +10,8 @@ class Context():
         if(not self.__last_block):
             self.__first_block = block
         else:
-            self.__last_block.set_next_block(block)
-        block.set_prev_block(self.__last_block)
+            self.__last_block.set_next_block(Hfunction(block))
+        block.set_prev_block(Hfunction(self.__last_block))
         self.__last_block = block
 
     def prev_block(self):
