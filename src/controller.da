@@ -2,20 +2,9 @@ import random
 
 class Controller(process):
 
-    def setup(nprocs, lambda_t):
+    def setup(nprocs, processes, lambda_t):
 
-        self.ps = set()
-        self.readyps = 0
-
-    def receive(msg=('CTL_Ready',), from_=source):
-        # Count readys.
-        ps.add(source)
-        readyps += 1
-
-    def receive(msg=('Processes', ps,)):
-        ps = ps;
-
-    def receive(msg=)
+        self.ps = processes
 
     def run():
 
@@ -26,25 +15,3 @@ class Controller(process):
             pass
         elif timeout(lambda_t):
             pass
-
-
-
-
-class Controllee(process):
-
-    def ctl_begin():
-        send(('CTL_Ready',), to=ctl)
-
-
-    def run():
-        pass
-
-
-
-def run(func):
-
-    def ctl_run(self):
-        self.ctl_begin()
-        func(self)
-
-    return ctl_runs
