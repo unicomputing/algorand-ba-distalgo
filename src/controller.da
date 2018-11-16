@@ -2,9 +2,10 @@ import random
 
 class Controller(process):
 
-    def setup(nprocs, processes, lambda_t):
-
+    def setupawaitprocesses, lambda_t, context):
         self.ps = processes
+        self.lambda_t = lambda_t
+        self.context = context
 
     def run():
 
@@ -15,3 +16,5 @@ class Controller(process):
             pass
         elif timeout(lambda_t):
             pass
+        await(each(p in ps, has=received(('done', p))))
+        send(('done',), to=parent())

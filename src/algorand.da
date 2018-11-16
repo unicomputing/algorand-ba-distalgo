@@ -1,0 +1,35 @@
+from controller import Controller
+from context import Context
+from block import Context
+
+class User(process):
+    def setup(neighbours, ctrl, context):
+        self.neighbours = neighbours
+        self.controller = ctrl
+        self.context = context
+
+    def receive(msg='Propose'):
+        pass
+
+    def run():
+        await(received(('done',), from_=parent()))
+
+def initial_context():
+    ctx = Context()
+    starting_block = Block('start')
+    ctx.add_block(starting_block)
+    return ctx
+
+def main():
+    nprocs = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    lambda_t = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+
+    context = initial_context()
+    ps = new(User, num=nprocs)
+
+    ctrl = Controller(nprocs, ps, lambda_t, context)
+
+    for p in ps: setup(p, (ps-{p}, ctrl, context))
+    start(ps)
+    start(ctrl)
+    await(received(('done', ctrl)))
