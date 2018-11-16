@@ -1,14 +1,23 @@
+# https://people.csail.mit.edu/nickolai/papers/gilad-algorand-eprint.pdf
+# The Block metadata is Implemented as per section 8.1 in the paper.
+import datetime
+
 class Block(object):
     def __init__(self, x):
         self.__val = x
-        self.__next = None
-        self.__prev = None
+        self.__next_hash = None
+        self.__prev_hash = None
+        self.__round = None
+        self.__timestamp = datetime.datetime.now()
 
     def get_value(self):
         return self.__val
 
+    def get_round(self):
+        return self.__round
+
     def set_prev_block(self, block):
-        self.__prev = block
+        self.__prev_hash = block
 
     def set_next_block(self, block):
-        self.__next = block
+        self.__next_hash = block
