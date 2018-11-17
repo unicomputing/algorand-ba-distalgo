@@ -1,6 +1,7 @@
 from controller import Controller
 from context import Context
 from block import Context
+from H import H
 
 class User(process):
     def setup(neighbours, ctrl, context):
@@ -14,9 +15,17 @@ class User(process):
     def run():
         await(received(('done',), from_=parent()))
 
-
+    #TODO : Stub for ProcessMsg
     def process_message(ctx, msg):
-        votes = verifysort(msg)
+        (ps_id, signed_m) = msg  #TODO : The assignment will change depending on what the gossip message returns
+        (round, step, sorthash, pi, hprev, value) = signed_m
+
+        if (hprev !=  H(ctx.last_block)
+            return (0, null, null)
+
+        votes = verifysort(ps_id, sorthash, pi, ('committee', round, step) )
+
+        return (votes, value, sorthash)
 
 def initial_context():
     ctx = Context()

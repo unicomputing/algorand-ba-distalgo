@@ -75,7 +75,7 @@ class Controller(process):
 
     def run():
 
-        proposerSet = random.sample(ps, nprocs/2)
+        proposerSet = random.sample(ps, len(ps)/2)
         send(('Propose',), to=proposerSet)
 
         if await(False):
