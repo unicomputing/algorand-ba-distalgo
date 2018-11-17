@@ -12,7 +12,23 @@ class Controller(process):
         # self.step is Current Step in the Agreement Procedure
         self.step = None
         # self.round is Current Round of BA*
-        self.round = None
+        self.round_num = None
+
+        self.num_committee = self.nprocs//2  # Assigned n/2 for no reason. Need correct way of doing this.
+        self.num_proposers = self.nprocs//4  # Assigned n/4 for no reason. Need correct way of doing this.
+
+    def receive(msg=('All', round_num, step), from_= p):
+        proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
+        committee = Sortition(self.num_committee, round_num, step, 'Committee')
+        send(('SortitionAll', proposers, committee, step), to= p)
+
+    def receive(msg=('Committee', step), from_= p):
+        committee = Sortition(self.num_committee, None, step, 'Committee')
+        send(('SortitionCommittee', committee, step), to= p)
+
+    def receive(msg=('Proposer', round_num), from_= p):
+        proposers = Sortition(self.num_proposers, round_num, None, 'Committee')
+        send(('SortitionProposers', proposers, round_num), to= p)
 
     def Sortition(num_role, round, step, role):
         """
@@ -31,12 +47,12 @@ class Controller(process):
         members can cast multiple votes, and hence, are chosen using a Normal random process.
             Proposers are sampled randomly from the set of nodes in self.ps.
         """
-        assert role.lower() == 'committee' or role.lower() == 'proposer',\
+        assert role.lower() in 'committee' or role.lower() in 'proposers',\
             '[controller.da] Unrecognized role name given to Sortition'
-        if role == 'committee':
+        if role.lower() in 'committee':
             assert self.step is None or type(step) is str or self.step == step or self.step == step - 1, \
                 '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
-            if self.step < step:
+            if self.step is None or type(step) is str or self.step < step:
                 if nprocs <= 10:
                     scale = 0.5
                 elif nprocs <= 50:
@@ -51,11 +67,11 @@ class Controller(process):
                 self.step = step
             return self.committee
 
-        elif role.lower() == 'proposer':
+        elif role.lower() in 'proposer':
             assert self.round is None or self.round == round or self.round == round - 1, \
                 '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.round,
                                                                                                           round)
-            if self.round < round:
+            if self.round is None or self.round < round:
                 self.proposers = random.sample(self.ps, num_role)
                 self.round = round
             return self.proposers

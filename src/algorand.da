@@ -1,6 +1,6 @@
 from controller import Controller
 from context import Context
-from block import Context
+from block import Block
 from H import H
 
 class User(process):
@@ -15,17 +15,41 @@ class User(process):
     def run():
         await(received(('done',), from_=parent()))
 
-    #TODO : Stub for ProcessMsg
+    def UserSortition(round_num, step, role=None):
+        if role is None:
+            send(('All', round_num, step), to=self.controller)
+            await(received(('SortitionAll', proposers, committee, _step), from_=self.controller))
+            self.committee = committee
+            self.proposers = proposers
+        elif role.lower() == 'committee':
+            send(('Committee', step), to=self.controller)
+            await(received(('SortitionCommittee', committee, _step), from_=self.controller))
+            self.committee = committee
+        elif role.lower() == 'proposer':
+            send(('Proposer', round_num), to=self.controller)
+            await(received(('SortitionProposers', proposers, _round_num), from_=self.controller))
+            self.proposers = proposers
+        return committee[self] if self in committee else 0
+
+    def UserVerifySort(proc_id, role):
+        if role.lower() == 'committee':
+            if proc_id in self.committee:
+                return self.committee[proc_id]
+            return 0
+        elif role.lower() == 'proposer':
+            return int(self in self.proposers)
+
+    # TODO : Stub for ProcessMsg
     def process_message(ctx, msg):
-        (ps_id, signed_m) = msg  #TODO : The assignment will change depending on what the gossip message returns
-        (round, step, sorthash, pi, hprev, value) = signed_m
+        ps_id, signed_m = msg  #TODO : The assignment will change depending on what the gossip message returns
+        (round, step, member_id, hprev, value) = signed_m
 
-        if (hprev !=  H(ctx.last_block)
-            return (0, null, null)
+        if hprev !=  H(ctx.prev_block()):
+            return (0, None)
 
-        votes = verifysort(ps_id, sorthash, pi, ('committee', round, step) )
+        votes = UserVerifySort(member_id, 'committee')
 
-        return (votes, value, sorthash)
+        return (votes, value)
 
 def initial_context():
     ctx = Context()
