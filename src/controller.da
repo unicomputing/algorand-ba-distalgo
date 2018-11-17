@@ -1,11 +1,77 @@
 import random
+import numpy as np
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context):
+    def setup(processes, lambda_t, context, frac_traitors):
+        self.nprocs = len(processes)
         self.ps = processes
         self.lambda_t = lambda_t
         self.context = context
+        self.traitors = random.sample(processes, int(self.nprocs * frac_traitors))
+        # self.step is Current Step in the Agreement Procedure
+        self.step = None
+        # self.round is Current Round of BA*
+        self.round = None
+
+    def Sortition(num_role, round, step, role):
+        """
+        :param num_role: Number of processes needed by calling function for given role
+        :param round: Round number for performing proposer selection. No effect on committee selection.
+                        Code enforces that proposers can only be chosen once per round.
+        :param step: Step number for performing committee selection. No effect on proposer selection.
+                        Code enforces that committee can only be chosen once per step.
+        :param role: Role for which users are being chosen: 'Proposer' or 'Committee'. No other roles are accepted.
+        :return: List consisting of all node names assigned to "role"
+
+            This function is a reinterpretation of the Algorand Sortition algorithm. Instead of relying upon a VRF
+        to allow users to know whether they are committee members, proposers, or just replicas, at each step/round, we
+        generate a list of members for each role the first time this function is called at each step/round.
+            Committee Members are chosen according to a set of weights generated randomly each step. The committee
+        members can cast multiple votes, and hence, are chosen using a Normal random process.
+            Proposers are sampled randomly from the set of nodes in self.ps.
+        """
+        assert role.lower() == 'committee' or role.lower() == 'proposer',\
+            '[controller.da] Unrecognized role name given to Sortition'
+        if role == 'committee':
+            assert self.step is None or type(step) is str or self.step == step or self.step == step - 1, \
+                '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
+            if self.step < step:
+                if nprocs <= 10:
+                    scale = 0.5
+                elif nprocs <= 50:
+                    scale = 1.0
+                else:
+                    scale = 1.5
+                self.W = np.histogram(np.random.normal(loc=nprocs / 2, scale=scale * nprocs / 10,
+                                                       size=num_role).round().astype(np.int32),
+                                      bins=nprocs)[0]
+                self.committee = dict([(proc_id, self.W[i]) for proc_id, i in zip(list(self.ps),range(nprocs))
+                                       if self.W[i]])
+                self.step = step
+            return self.committee
+
+        elif role.lower() == 'proposer':
+            assert self.round is None or self.round == round or self.round == round - 1, \
+                '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.round,
+                                                                                                          round)
+            if self.round < round:
+                self.proposers = random.sample(self.ps, num_role)
+                self.round = round
+            return self.proposers
+
+    def VerifySort(proc_id):
+        """
+        :proc_id: The node ID which is being verified.
+        :return: Number of votes assigned to proc_id.
+
+            This function is a reinterpretation of the Algorand VerifySort algorithm. Instead of relying upon a VRF
+        to independently allow users to know how many votes a committee member is allowed to cast, we allow them to
+        query the controller for this information.
+        """
+        if proc_id in self.committee:
+            return self.committee[proc_id]
+        return 0
 
     def run():
 
