@@ -8,6 +8,8 @@ class User(process):
         self.neighbours = neighbours
         self.controller = ctrl
         self.context = context
+        self.curr_round_num = None
+        self.curr_step = None
 
     def receive(msg=('Propose',)):
         pass
@@ -23,20 +25,41 @@ class User(process):
             send((round_num, step, initiator_id, h_last_block, value), to=self.neighbours)
 
     def UserSortition(round_num, step, role=None):
-        if role is None:
+        assert role is None or role.lower() in 'committee' or role.lower() in 'proposer', \
+            'Invalid role given for Sortition'
+        assert round_num >= self.curr_round_num,\
+            'Round No. {} for which Sortition is requested is over. Curr Round No. is {}'.format(round_num,
+                                                                                                 self.curr_round_num)
+        assert type(step) is str or step >= self.curr_step, \
+            'Step No. {} for which Sortition is requested is over. Curr Step No. is {}'.format(step, self.curr_step)
+
+        if role is None and (self.curr_round_num is None or self.curr_step is None
+                             or self.curr_round_num < round_num or self.curr_step < step):
             send(('All', round_num, step), to=self.controller)
             await(received(('SortitionAll', proposers, committee, _step), from_=self.controller))
             self.committee = committee
             self.proposers = proposers
-        elif role.lower() == 'committee':
+            self.curr_round_num = round_num
+            self.curr_step = step
+
+        elif role.lower() in 'committee' and (type(step) is str or self.curr_step < step):
             send(('Committee', step), to=self.controller)
             await(received(('SortitionCommittee', committee, _step), from_=self.controller))
             self.committee = committee
-        elif role.lower() == 'proposer':
+            self.curr_step = step
+
+        elif role.lower() in 'proposer' and self.curr_round_num < round_num:
             send(('Proposer', round_num), to=self.controller)
             await(received(('SortitionProposers', proposers, _round_num), from_=self.controller))
             self.proposers = proposers
-        return committee[self] if self in committee else 0
+            self.curr_round_num = round_num
+
+        if role.lower() in 'committee':
+            return self.committee[self] if self in self.committee else 0
+        elif role.lower() in 'proposer':
+            return self in self.proposers
+        else:
+            return (self in self.proposers, self.committee[self] if self in self.committee else 0)
 
     def UserVerifySort(proc_id, role):
         if role.lower() == 'committee':
