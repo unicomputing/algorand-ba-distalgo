@@ -32,6 +32,14 @@ class Controller(process):
 
     def Sortition(num_role, round, step, role):
         """
+            This function is a reinterpretation of the Algorand Sortition algorithm: Algorithm 1, Page 5,
+        Gilad et. al - Algorand. Instead of relying upon a VRF to allow users to know whether they are committee
+        members, proposers, or just replicas, at each step/round, we generate a list of members for each role the
+        first time this function is called at each step/round.
+            Committee Members are chosen according to a set of weights generated randomly each step. The committee
+        members can cast multiple votes, and hence, are chosen using a Normal random process.
+            Proposers are sampled uniformly at random from the set of nodes in self.ps.
+
         :param num_role: Number of processes needed by calling function for given role
         :param round: Round number for performing proposer selection. No effect on committee selection.
                         Code enforces that proposers can only be chosen once per round.
@@ -39,13 +47,6 @@ class Controller(process):
                         Code enforces that committee can only be chosen once per step.
         :param role: Role for which users are being chosen: 'Proposer' or 'Committee'. No other roles are accepted.
         :return: List consisting of all node names assigned to "role"
-
-            This function is a reinterpretation of the Algorand Sortition algorithm. Instead of relying upon a VRF
-        to allow users to know whether they are committee members, proposers, or just replicas, at each step/round, we
-        generate a list of members for each role the first time this function is called at each step/round.
-            Committee Members are chosen according to a set of weights generated randomly each step. The committee
-        members can cast multiple votes, and hence, are chosen using a Normal random process.
-            Proposers are sampled randomly from the set of nodes in self.ps.
         """
         assert role.lower() in 'committee' or role.lower() in 'proposers',\
             '[controller.da] Unrecognized role name given to Sortition'
@@ -78,12 +79,12 @@ class Controller(process):
 
     def VerifySort(proc_id):
         """
+            This function is a reinterpretation of the Algorand VerifySort algorithm: Algorithm 2, Page 6,
+        Gilad et. al - Algorand. Instead of relying upon a VRF to independently allow users to know how many
+        votes a committee member is allowed to cast, we allow them to query the controller for this information.
+
         :proc_id: The node ID which is being verified.
         :return: Number of votes assigned to proc_id.
-
-            This function is a reinterpretation of the Algorand VerifySort algorithm. Instead of relying upon a VRF
-        to independently allow users to know how many votes a committee member is allowed to cast, we allow them to
-        query the controller for this information.
         """
         if proc_id in self.committee:
             return self.committee[proc_id]
