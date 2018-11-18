@@ -9,11 +9,18 @@ class User(process):
         self.controller = ctrl
         self.context = context
 
-    def receive(msg='Propose'):
+    def receive(msg=('Propose',)):
         pass
 
     def run():
         await(received(('done',), from_=parent()))
+
+    def Gossip(round_num, step, initiator_id, h_last_block, value):
+        send((round_num, step, initiator_id, h_last_block, value), to= self.neighbours)
+
+    def receive(msg= (round_num, step, initiator_id, h_last_block, value), from_= p):
+        if not sent((round_num, step, initiator_id, h_last_block, value), to= self.neighbours):
+            send((round_num, step, initiator_id, h_last_block, value), to=self.neighbours)
 
     def UserSortition(round_num, step, role=None):
         if role is None:
@@ -42,12 +49,12 @@ class User(process):
     # TODO : Stub for ProcessMsg
     def process_message(ctx, msg):
         ps_id, signed_m = msg  #TODO : The assignment will change depending on what the gossip message returns
-        (round, step, member_id, hprev, value) = signed_m
+        (round, step, initiator_id, hprev, value) = signed_m
 
         if hprev !=  H(ctx.prev_block()):
             return (0, None)
 
-        votes = UserVerifySort(member_id, 'committee')
+        votes = UserVerifySort(initiator_id, 'committee')
 
         return (votes, value)
 
