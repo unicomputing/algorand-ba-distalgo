@@ -13,7 +13,9 @@ class Controller(process):
         self.step = None
         # self.round is Current Round of BA*
         self.round_num = None
-
+        self.W = None
+        self.committee = None
+        self.proposers = None
         self.num_committee = self.nprocs//2  # Assigned n/2 for no reason. Need correct way of doing this.
         self.num_proposers = self.nprocs//4  # Assigned n/4 for no reason. Need correct way of doing this.
 
@@ -40,13 +42,20 @@ class Controller(process):
         members can cast multiple votes, and hence, are chosen using a Normal random process.
             Proposers are sampled uniformly at random from the set of nodes in self.ps.
 
-        :param num_role: Number of processes needed by calling function for given role
-        :param round: Round number for performing proposer selection. No effect on committee selection.
-                        Code enforces that proposers can only be chosen once per round.
-        :param step: Step number for performing committee selection. No effect on proposer selection.
-                        Code enforces that committee can only be chosen once per step.
-        :param role: Role for which users are being chosen: 'Proposer' or 'Committee'. No other roles are accepted.
-        :return: List consisting of all node names assigned to "role"
+        @param num_role: Number of processes needed by calling
+            function for given role
+        @type num_role: int
+        @param round: Round number for performing proposer selection.
+            No effect on committee selection
+        @type round: int
+        @param step: Step number for performing committee selection.
+            No effect on proposer selection
+        @type step: int
+        @param role: Role for which users are being chosen: Proposer or Committee.
+            No other roles are accepted.
+        @type role: str
+        @return: List consisting of all node names
+            assigned to "role"
         """
         assert role.lower() in 'committee' or role.lower() in 'proposers',\
             '[controller.da] Unrecognized role name given to Sortition'
@@ -79,12 +88,13 @@ class Controller(process):
 
     def VerifySort(proc_id):
         """
-            This function is a reinterpretation of the Algorand VerifySort algorithm: Algorithm 2, Page 6,
+        This function is a reinterpretation of the Algorand VerifySort algorithm: Algorithm 2, Page 6,
         Gilad et. al - Algorand. Instead of relying upon a VRF to independently allow users to know how many
         votes a committee member is allowed to cast, we allow them to query the controller for this information.
 
-        :proc_id: The node ID which is being verified.
-        :return: Number of votes assigned to proc_id.
+        @param proc_id: The node ID which is being verified.
+        @return: Number of votes assigned to proc_id.
+
         """
         if proc_id in self.committee:
             return self.committee[proc_id]
