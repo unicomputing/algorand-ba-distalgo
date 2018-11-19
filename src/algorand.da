@@ -2,6 +2,7 @@ from controller import Controller
 from context import Context
 from block import Block
 from H import H
+import sys
 
 class User(process):
     def setup(neighbours, ctrl, context):
@@ -10,6 +11,8 @@ class User(process):
         self.context = context
         self.curr_round_num = None
         self.curr_step = None
+        self.committee = None
+        self.proposers = None
 
     def receive(msg=('Propose',)):
         pass
@@ -94,7 +97,7 @@ def main():
     context = initial_context()
     ps = new(User, num=nprocs)
 
-    ctrl = Controller(nprocs, ps, lambda_t, context)
+    ctrl = new(Controller, (ps, lambda_t, context, 2))
 
     for p in ps: setup(p, (ps-{p}, ctrl, context))
     start(ps)
