@@ -20,6 +20,21 @@ class User(process):
         pass
 
     def Gossip(round_num, step, h_last_block, value):
+        """
+
+        Sends a message to all its neighbours.
+
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param h_last_block: The hash of the previously selected block in the ledger.
+        @type h_last_block: L{H(Block)}
+        @param value: The hash value of the current proposed block
+        @type value: L{H(Block)}
+        @return:
+        @rtype:
+        """
         send((round_num, step, h_last_block, value), to= self.neighbours)
 
     def receive(msg= (round_num, step, h_last_block, value), from_= p):
@@ -27,6 +42,20 @@ class User(process):
             send((round_num, step, h_last_block, value), to=self.neighbours)
 
     def UserSortition(round_num, step, role=None):
+        """
+
+        Sends request to L{controller} to perform the soritition.
+
+
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param role: A string mentioning the role the user.
+        @type role: C(str)
+        @return: Number of votes that can be cast if that user is a committee member else 0.
+        @rtype: C(set)
+        """
         output('User Sortition')
         assert role is None or role.lower() in 'committee' or role.lower() in 'proposer', \
             'Invalid role given for Sortition'
@@ -88,11 +117,48 @@ class User(process):
         return (votes, value)
 
     def CommiteeVote(context, round, step, value):
+        """
+
+        The procedure checks if the user is selected for the committee in a given round and step of BA. The
+        CommitteeVote procedure to check if the user is chosen to participate in the committee. If the user
+        is chosen for this step, the user gossips the message containing the value passed to CommitteeVote,
+        which is typically the hash of some block.
+
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param block_hash: The highest priority block's hash that has been received by the user.
+        @type block_hash: L{H(Block)}
+        @return:
+        @rtype:
+        """
         votes = UserSortition(round, step, role="committee")
         if votes > 0:
             Gossip(round, step, context.prev_block(), value)
 
     def CountVotes(context, round, step, T_value, tau_value, lambda_value):
+        """
+
+        This  procedure reads messages that belong to the current round and step. It processes the votes by calling
+        the ProcessMsg() procedure for every message , which ensures that the vote is valid. Count the number of votes
+        for each proposed blocks hash value and returns the block if the value is more than a threshold.
+
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param T_value: Threshold of tau value for BA*
+        @type T_value: C{float}
+        @param tau_value: Expected number of block or values.
+        @type tau_value: C{int}
+        @param lambda_value: Timeout for receiving a block
+        @type lambda_value: C{int}
+        @return: Returns the hash of the block that has maximum votes.
+        @rtype: L{H(Block)}
+        """
         start = time.time()
         counts = set()
         voters = set()
@@ -100,11 +166,39 @@ class User(process):
         return H()
 
     def BinaryBA(context, round, block_hash):
+        """
+        In the procedure, it reaches consensus on one of two values: either the hash passed to BinaryBA() or the hash
+        of the empty block. BinaryBA() relies on Reduction() to ensure that at most one non-empty block hash is passed
+        to BinaryBA() by all honest users.
+
+
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param block_hash: The highest priority block's hash that has been received by the user.
+        @type block_hash: L{H(Block)}
+        @return: Returns the hash of the block that has been chosen.
+        @rtype: L{H(Block)}
+        """
         # TODO: need to Implement Binary BA block.
         output('Binary BA*')
         return H()
 
     def Reduction(context, round, hblock):
+        """
+        Converts the problem of reaching consensus on an arbitarary value to reaching on consensus on one of the two
+        values either a specific proposed block or hash of an empty hash block.
+
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param hblock: The highest priority block's hash that has been received by the user.
+        @type hblock: L{H(Block)}
+        @return: Returns the hash of the block that has been chosen.
+        @rtype: L{H(Block)}
+        """
         output('Reduction')
         CommiteeVote(context, round, "REDUCTION_ONE", hblock)
         if await(False):
@@ -156,6 +250,12 @@ class User(process):
         # await(received(('done',), from_=parent()))
 
 def initial_context():
+    """
+    The initial context of the ledger.
+
+    @return: The context object with a starting block.
+    @rtype: L{Block}
+    """
     ctx = Context()
     starting_block = Block('start')
     ctx.add_block(starting_block)
