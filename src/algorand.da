@@ -26,8 +26,10 @@ class User(process):
         if not sent((round_num, step, h_last_block, value), to= self.neighbours):
             send((round_num, step, h_last_block, value), to=self.neighbours)
 
+    # def receive(msg= message, from_= self.controller):
+    #     output('Received from controller: {}'.format(message))
+
     def UserSortition(round_num, step, role=None):
-        output('User Sortition')
         assert role is None or role.lower() in 'committee' or role.lower() in 'proposer', \
             'Invalid role given for Sortition'
         assert round_num >= self.curr_round_num,\
@@ -38,25 +40,24 @@ class User(process):
 
         if role is None and (self.curr_round_num is None or self.curr_step is None
                              or self.curr_round_num < round_num or self.curr_step < step):
-            output('All User Sortition')
             send(('All', round_num, step), to=self.controller)
-            await(received(('SortitionAll', proposers, committee, step), from_=self.controller))
+            await(some(received(('SortitionAll', proposers, committee, _step), from_=self.controller)))
             self.committee = committee
             self.proposers = proposers
             self.curr_round_num = round_num
             self.curr_step = step
 
         elif role.lower() in 'committee' and (type(step) is str or self.curr_step < step):
-            output('Committee Sortition')
+            output('Requesting Committee')
             send(('Committee', step), to=self.controller)
-            await(received(('SortitionCommittee', committee, step), from_=self.controller))
+            await(some(received(('SortitionCommittee', committee, _step), from_=self.controller)))
+            output('Received Committee')
             self.committee = committee
             self.curr_step = step
 
         elif role.lower() in 'proposer' and self.curr_round_num < round_num:
-            output('Proposer Sortition')
             send(('Proposer', round_num), to=self.controller)
-            await(received(('SortitionProposers', proposers, _round_num), from_=self.controller))
+            await(some(received(('SortitionProposers', proposers, _round_num), from_=self.controller)))
             self.proposers = proposers
             self.curr_round_num = round_num
 
@@ -111,15 +112,18 @@ class User(process):
             pass
         elif timeout(lambda_block + lambda_step):
             pass
-        output('AFTER await Reduction')
+        output('After CommitteeVote REDUCTION_ONE')
         hblock1 = CountVotes(context, round, "REDUCTION_ONE", T_step, tau_step,
                              lambda_block + lambda_step)
+        output('After CountVotes for REDUCTION_ONE')
         empty_hash = H()  #TODO: need to create empty block.
         if hblock1 == "TIMEOUT":
             CommiteeVote(context, round, "REDUCTION_TWO", empty_hash)
         else:
             CommiteeVote(context, round, "REDUCTION_TWO", hblock1)
+        output('After CommitteeVote REDUCTION_TWO')
         hblock2 = CountVotes(context, round, "REDUCTION_TWO", T_step, tau_step, lambda_step)
+        output('After CountVotes for REDUCTION_TWO')
         if hblock2 == "TIMEOUT":
             return empty_hash
         return hblock2
@@ -139,8 +143,11 @@ class User(process):
         """
         output('Starting BA*')
         hblock = Reduction(context, round, H(block))
+        output('Reduction Done')
         hblock_star = BinaryBA(context, round, hblock)
+        output('BinaryBA* Done')
         r = CountVotes(context, round, "FINAL", T_final, tau_final, lambda_step)
+        output('After CountVotes for FINAL')
         if hblock_star == r:
             return "FINAL", block  #TODO: Need to Get the BLOCKOFHASH(hblock_star)
         else:
@@ -150,7 +157,12 @@ class User(process):
         await(received(('start_BA',), from_=self.controller))
 
         highest_priority_block = None # for the round BA* is running.
-        BA(self.context, 0, highest_priority_block)
+        result = BA(self.context, 0, highest_priority_block)
+        output('Completed BA*')
+
+        send(('result', result), to=self.controller)
+        await(received(('Received result',), from_=self.controller))
+
         send(('done',), to=self.controller)
         output('terminating User ', self)
         # await(received(('done',), from_=parent()))
@@ -172,4 +184,4 @@ def main():
     for p in ps: setup(p, (ps-{p}, ctrl, context))
     start(ps)
     start(ctrl)
-    await(received(('done', ctrl)))
+    await(received(('done',), from_=ctrl))
