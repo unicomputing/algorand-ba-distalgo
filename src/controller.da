@@ -55,7 +55,6 @@ class Controller(process):
         @type role: str
         @return: List consisting of all node names
             assigned to "role"
-
         """
         assert role.lower() in 'committee' or role.lower() in 'proposers',\
             '[controller.da] Unrecognized role name given to Sortition'
