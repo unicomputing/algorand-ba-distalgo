@@ -35,9 +35,13 @@ class Controller(process):
 
     def Sortition(num_role, round, step, role):
         """
-
-        This function is a reinterpretation of the Algorand Sortition algorithm. Instead of relying upon a VRF        to allow users to know whether they are committee members, proposers, or just replicas, at each step/round, we
-            generate a list of members for each role the first time this function is called at each step/round.\n            Committee Members are chosen according to a set of weights generated randomly each step. The committee\n        members can cast multiple votes, and hence, are chosen using a Normal random process.\n            Proposers are sampled randomly from the set of nodes in self.ps.
+            This function is a reinterpretation of the Algorand Sortition algorithm: Algorithm 1, Page 5,
+        Gilad et. al - Algorand. Instead of relying upon a VRF to allow users to know whether they are committee
+        members, proposers, or just replicas, at each step/round, we generate a list of members for each role the
+        first time this function is called at each step/round.
+            Committee Members are chosen according to a set of weights generated randomly each step. The committee
+        members can cast multiple votes, and hence, are chosen using a Normal random process.
+            Proposers are sampled uniformly at random from the set of nodes in self.ps.
 
         @param num_role: Number of processes needed by calling
             function for given role
@@ -53,7 +57,6 @@ class Controller(process):
         @type role: str
         @return: List consisting of all node names
             assigned to "role"
-
         """
         assert role.lower() in 'committee' or role.lower() in 'proposers',\
             '[controller.da] Unrecognized role name given to Sortition'
