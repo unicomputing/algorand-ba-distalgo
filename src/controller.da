@@ -18,6 +18,7 @@ class Controller(process):
         self.proposers = None
         self.num_committee = self.nprocs//2  # Assigned n/2 for no reason. Need correct way of doing this.
         self.num_proposers = self.nprocs//4  # Assigned n/4 for no reason. Need correct way of doing this.
+        self.results = dict()
 
     def receive(msg=('All', round_num, step), from_= p):
         proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
@@ -62,7 +63,8 @@ class Controller(process):
         if role.lower() in 'committee':
             assert self.step is None or type(step) is str or self.step == step or self.step == step - 1, \
                 '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
-            if self.step is None or type(step) is str or self.step < step:
+            if self.step is None or self.step != step or self.step < step:
+                output('Committee Sortition Requirements Satisfied')
                 if nprocs <= 10:
                     scale = 0.5
                 elif nprocs <= 50:
@@ -75,6 +77,8 @@ class Controller(process):
                 self.committee = dict([(proc_id, self.W[i]) for proc_id, i in zip(list(self.ps),range(nprocs))
                                        if self.W[i]])
                 self.step = step
+            output('Finished Committee Sortition - STEP: {}'.format(step))
+            output('Committee = {}'.format(self.committee))
             return self.committee
 
         elif role.lower() in 'proposer':
@@ -88,21 +92,26 @@ class Controller(process):
 
     def VerifySort(proc_id):
         """
-        This function is a reinterpretation of the Algorand VerifySort algorithm: Algorithm 2, Page 6,
-        Gilad et. al - Algorand. Instead of relying upon a VRF to independently allow users to know how many
-        votes a committee member is allowed to cast, we allow them to query the controller for this information.
+
+        This function is a reinterpretation of the Algorand VerifySort algorithm. Instead of relying upon a VRF
+        to independently allow users to know how many votes a committee member is allowed to cast, we allow them to
+        query the controller for this information.
 
         @param proc_id: The node ID which is being verified.
         @return: Number of votes assigned to proc_id.
 
         """
-        if proc_id in self.committee:
+        if self.committee and proc_id in self.committee:
             return self.committee[proc_id]
         return 0
 
+    def receive(msg= ('result', result), from_=p):
+        self.results[p] = result
+        send(('Received result',), to=p)
+
     def run():
 
-        proposerSet = random.sample(ps, len(ps)/2)
+        proposerSet = random.sample(self.ps, len(self.ps)//2)
         send(('Propose',), to=proposerSet)
 
         if await(False):
@@ -110,8 +119,12 @@ class Controller(process):
         elif timeout(lambda_t):
             pass
 
-        send(('start_BA',) , to=ps)
+        send(('start_BA', ) , to=ps)
 
-        await(each(p in ps, has=received(('done', p))))
+        await(each(p in ps, has=received(('done',), from_=p)))
+
+        output('Results:')
+        output(self.results)
+
         send(('done',), to=parent())
 
