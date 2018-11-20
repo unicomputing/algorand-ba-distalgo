@@ -127,8 +127,8 @@ class User(process):
         @type round: C{int}
         @param step: The current step of BA that is in progress.
         @type step: C{int}
-        @param block_hash: The highest priority block's hash that has been received by the user.
-        @type block_hash: L{H(Block)}
+        @param value: The highest priority block's hash that has been received by the user.
+        @type value: L{H(Block)}
         @return:
         @rtype:
         """
