@@ -18,20 +18,18 @@ class Controller(process):
         self.proposers = None
         self.num_committee = self.nprocs//2  # Assigned n/2 for no reason. Need correct way of doing this.
         self.num_proposers = self.nprocs//4  # Assigned n/4 for no reason. Need correct way of doing this.
+        self.results = dict()
 
     def receive(msg=('All', round_num, step), from_= p):
-        output('Received All Sortition Request')
         proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
         committee = Sortition(self.num_committee, round_num, step, 'Committee')
         send(('SortitionAll', proposers, committee, step), to= p)
 
     def receive(msg=('Committee', step), from_= p):
-        output('Received Committee Sortition Request')
         committee = Sortition(self.num_committee, None, step, 'Committee')
         send(('SortitionCommittee', committee, step), to= p)
 
     def receive(msg=('Proposer', round_num), from_= p):
-        output('Received Proposer Sortition Request')
         proposers = Sortition(self.num_proposers, round_num, None, 'Committee')
         send(('SortitionProposers', proposers, round_num), to= p)
 
@@ -62,7 +60,8 @@ class Controller(process):
         if role.lower() in 'committee':
             assert self.step is None or type(step) is str or self.step == step or self.step == step - 1, \
                 '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
-            if self.step is None or type(step) is str or self.step < step:
+            if self.step is None or self.step != step or self.step < step:
+                output('Committee Sortition Requirements Satisfied')
                 if nprocs <= 10:
                     scale = 0.5
                 elif nprocs <= 50:
@@ -75,6 +74,8 @@ class Controller(process):
                 self.committee = dict([(proc_id, self.W[i]) for proc_id, i in zip(list(self.ps),range(nprocs))
                                        if self.W[i]])
                 self.step = step
+            output('Finished Committee Sortition - STEP: {}'.format(step))
+            output('Committee = {}'.format(self.committee))
             return self.committee
 
         elif role.lower() in 'proposer':
@@ -101,6 +102,10 @@ class Controller(process):
             return self.committee[proc_id]
         return 0
 
+    def receive(msg= ('result', result), from_=p):
+        self.results[p] = result
+        send(('Received result',), to=p)
+
     def run():
 
         proposerSet = random.sample(self.ps, len(self.ps)//2)
@@ -113,6 +118,10 @@ class Controller(process):
 
         send(('start_BA', ) , to=ps)
 
-        await(each(p in ps, has=received(('done', p))))
+        await(each(p in ps, has=received(('done',), from_=p)))
+
+        output('Results:')
+        output(self.results)
+
         send(('done',), to=parent())
 
