@@ -20,15 +20,18 @@ class Controller(process):
         self.num_proposers = self.nprocs//4  # Assigned n/4 for no reason. Need correct way of doing this.
 
     def receive(msg=('All', round_num, step), from_= p):
+        output('Received All Sortition Request')
         proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
         committee = Sortition(self.num_committee, round_num, step, 'Committee')
         send(('SortitionAll', proposers, committee, step), to= p)
 
     def receive(msg=('Committee', step), from_= p):
+        output('Received Committee Sortition Request')
         committee = Sortition(self.num_committee, None, step, 'Committee')
         send(('SortitionCommittee', committee, step), to= p)
 
     def receive(msg=('Proposer', round_num), from_= p):
+        output('Received Proposer Sortition Request')
         proposers = Sortition(self.num_proposers, round_num, None, 'Committee')
         send(('SortitionProposers', proposers, round_num), to= p)
 
@@ -84,7 +87,7 @@ class Controller(process):
             return self.proposers
 
     def VerifySort(proc_id):
-         """
+        """
 
         This function is a reinterpretation of the Algorand VerifySort algorithm. Instead of relying upon a VRF
         to independently allow users to know how many votes a committee member is allowed to cast, we allow them to
@@ -94,13 +97,13 @@ class Controller(process):
         @return: Number of votes assigned to proc_id.
 
         """
-        if proc_id in self.committee:
+        if self.committee and proc_id in self.committee:
             return self.committee[proc_id]
         return 0
 
     def run():
 
-        proposerSet = random.sample(ps, len(ps)/2)
+        proposerSet = random.sample(self.ps, len(self.ps)//2)
         send(('Propose',), to=proposerSet)
 
         if await(False):
@@ -108,7 +111,7 @@ class Controller(process):
         elif timeout(lambda_t):
             pass
 
-        send(('start_BA',) , to=ps)
+        send(('start_BA', ) , to=ps)
 
         await(each(p in ps, has=received(('done', p))))
         send(('done',), to=parent())

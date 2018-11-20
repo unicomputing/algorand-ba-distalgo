@@ -3,13 +3,15 @@ from context import Context
 from block import Block
 from H import H
 import sys
+import time
+from parameters import *
 
 class User(process):
     def setup(neighbours, ctrl, context):
         self.neighbours = neighbours
         self.controller = ctrl
         self.context = context
-        self.curr_round_num = None
+        self.curr_round_num = 0
         self.curr_step = None
         self.committee = None
         self.proposers = None
@@ -17,17 +19,15 @@ class User(process):
     def receive(msg=('Propose',)):
         pass
 
-    def run():
-        await(received(('done',), from_=parent()))
+    def Gossip(round_num, step, h_last_block, value):
+        send((round_num, step, h_last_block, value), to= self.neighbours)
 
-    def Gossip(round_num, step, initiator_id, h_last_block, value):
-        send((round_num, step, initiator_id, h_last_block, value), to= self.neighbours)
-
-    def receive(msg= (round_num, step, initiator_id, h_last_block, value), from_= p):
-        if not sent((round_num, step, initiator_id, h_last_block, value), to= self.neighbours):
-            send((round_num, step, initiator_id, h_last_block, value), to=self.neighbours)
+    def receive(msg= (round_num, step, h_last_block, value), from_= p):
+        if not sent((round_num, step, h_last_block, value), to= self.neighbours):
+            send((round_num, step, h_last_block, value), to=self.neighbours)
 
     def UserSortition(round_num, step, role=None):
+        output('User Sortition')
         assert role is None or role.lower() in 'committee' or role.lower() in 'proposer', \
             'Invalid role given for Sortition'
         assert round_num >= self.curr_round_num,\
@@ -38,20 +38,23 @@ class User(process):
 
         if role is None and (self.curr_round_num is None or self.curr_step is None
                              or self.curr_round_num < round_num or self.curr_step < step):
+            output('All User Sortition')
             send(('All', round_num, step), to=self.controller)
-            await(received(('SortitionAll', proposers, committee, _step), from_=self.controller))
+            await(received(('SortitionAll', proposers, committee, step), from_=self.controller))
             self.committee = committee
             self.proposers = proposers
             self.curr_round_num = round_num
             self.curr_step = step
 
         elif role.lower() in 'committee' and (type(step) is str or self.curr_step < step):
+            output('Committee Sortition')
             send(('Committee', step), to=self.controller)
-            await(received(('SortitionCommittee', committee, _step), from_=self.controller))
+            await(received(('SortitionCommittee', committee, step), from_=self.controller))
             self.committee = committee
             self.curr_step = step
 
         elif role.lower() in 'proposer' and self.curr_round_num < round_num:
+            output('Proposer Sortition')
             send(('Proposer', round_num), to=self.controller)
             await(received(('SortitionProposers', proposers, _round_num), from_=self.controller))
             self.proposers = proposers
@@ -73,7 +76,7 @@ class User(process):
             return int(self in self.proposers)
 
     # TODO : Stub for ProcessMsg
-    def process_message(ctx, msg):
+    def ProcessMsg(ctx, msg):
         ps_id, signed_m = msg  #TODO : The assignment will change depending on what the gossip message returns
         (round, step, initiator_id, hprev, value) = signed_m
 
@@ -83,6 +86,74 @@ class User(process):
         votes = UserVerifySort(initiator_id, 'committee')
 
         return (votes, value)
+
+    def CommiteeVote(context, round, step, value):
+        votes = UserSortition(round, step, role="committee")
+        if votes > 0:
+            Gossip(round, step, context.prev_block(), value)
+
+    def CountVotes(context, round, step, T_value, tau_value, lambda_value):
+        start = time.time()
+        counts = set()
+        voters = set()
+        #TODO: Implement vote counting
+        return H()
+
+    def BinaryBA(context, round, block_hash):
+        # TODO: need to Implement Binary BA block.
+        output('Binary BA*')
+        return H()
+
+    def Reduction(context, round, hblock):
+        output('Reduction')
+        CommiteeVote(context, round, "REDUCTION_ONE", hblock)
+        if await(False):
+            pass
+        elif timeout(lambda_block + lambda_step):
+            pass
+        output('AFTER await Reduction')
+        hblock1 = CountVotes(context, round, "REDUCTION_ONE", T_step, tau_step,
+                             lambda_block + lambda_step)
+        empty_hash = H()  #TODO: need to create empty block.
+        if hblock1 == "TIMEOUT":
+            CommiteeVote(context, round, "REDUCTION_TWO", empty_hash)
+        else:
+            CommiteeVote(context, round, "REDUCTION_TWO", hblock1)
+        hblock2 = CountVotes(context, round, "REDUCTION_TWO", T_step, tau_step, lambda_step)
+        if hblock2 == "TIMEOUT":
+            return empty_hash
+        return hblock2
+
+    def BA(context, round, block):
+        """
+        The highest level Byzantine Agreement Protocol procedure that is run in each user process, to come to consensus
+        on proposed or an empty block.
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param block: The highest priority block that has been received by the user.
+        @type block: L{Block}
+        @return: tuple containing status of consensus and the block which has been agreed upon.
+        @rtype: C{str}, L{Block}
+        """
+        output('Starting BA*')
+        hblock = Reduction(context, round, H(block))
+        hblock_star = BinaryBA(context, round, hblock)
+        r = CountVotes(context, round, "FINAL", T_final, tau_final, lambda_step)
+        if hblock_star == r:
+            return "FINAL", block  #TODO: Need to Get the BLOCKOFHASH(hblock_star)
+        else:
+            return "TENTATIVE", block  #TODO: Need to Get the BLOCKOFHASH(hblock_star)
+
+    def run():
+        await(received(('start_BA',), from_=self.controller))
+
+        highest_priority_block = None # for the round BA* is running.
+        BA(self.context, 0, highest_priority_block)
+        send(('done',), to=self.controller)
+        output('terminating User ', self)
+        # await(received(('done',), from_=parent()))
 
 def initial_context():
     ctx = Context()
@@ -96,8 +167,7 @@ def main():
 
     context = initial_context()
     ps = new(User, num=nprocs)
-
-    ctrl = new(Controller, (ps, lambda_t, context, 2))
+    ctrl = new(Controller, (ps, lambda_t, context, 0.2))
 
     for p in ps: setup(p, (ps-{p}, ctrl, context))
     start(ps)
