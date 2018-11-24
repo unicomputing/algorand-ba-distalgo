@@ -134,7 +134,7 @@ class User(process):
         """
         votes = UserSortition(round, step, role="committee")
         if votes > 0:
-            Gossip(round, step, context.prev_block(), value)
+            Gossip(round, step, H(context.prev_block()), value)
 
     def CountVotes(context, round, step, T_value, tau_value, lambda_value):
         """
