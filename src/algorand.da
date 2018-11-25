@@ -62,7 +62,7 @@ class User(process):
         assert round_num >= self.curr_round_num,\
             'Round No. {} for which Sortition is requested is over. Curr Round No. is {}'.format(round_num,
                                                                                                  self.curr_round_num)
-        assert type(step) is str or step >= self.curr_step, \
+        assert type(step) is str or type(self.curr_step) is str or step >= self.curr_step, \
             'Step No. {} for which Sortition is requested is over. Curr Step No. is {}'.format(step, self.curr_step)
 
         if role is None and (self.curr_round_num is None or self.curr_step is None
@@ -161,7 +161,7 @@ class User(process):
         counts = dict()
         voters = set()
         #TODO: Implement vote counting
-        msgs = setof((round_num, step, h_last_block, value), ((round_num, step, h_last_block, value), _) in received)
+        msgs = setof((round_num, step, ps_id, h_last_block, value), (('CommitteeGossip', round_num, ps_id, step, h_last_block, value), _) in received)
         while True:
             for m in msgs:
                 votes, cmember_id, value = ProcessMsg(context, m)
