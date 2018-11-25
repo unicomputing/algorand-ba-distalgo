@@ -280,8 +280,6 @@ class User(process):
 
     def run():
         await(received(('start_BA',), from_=self.controller))
-        print(self.highest_priority_block, self, '*'*20)
-        print(json.dumps(self.blockofhash)
         result = BA(self.context, 0, self.highest_priority_block[1])
         output('Completed BA*')
 
