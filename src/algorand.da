@@ -43,17 +43,17 @@ class User(process):
         send(msg, to= self.neighbours)
 
     def receive(msg= ('CommiteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
-        if not sent((round_num, step, ps_id, h_last_block, value), to= self.neighbours):
-            send((round_num, step, ps_id, h_last_block, value), to=self.neighbours)
+        if not sent(('CommiteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
+            send(('CommiteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours-{p})
 
     def receive(msg=('Proposal', round_num, ps_id ,block), from_=p):
-        if not sent((round_num, ps_id ,block), to=self.neighbours):
+        if not sent(('Proposal', round_num, ps_id ,block), to=self.neighbours):
             block_hash = H(block)
             if block_hash not in self.blockofhash:
                 self.blockofhash[block_hash] = (ps_id, block)
             if self.highest_priority_block == None or self.highest_priority_block < (ps_id, block):
                 self.highest_priority_block = (ps_id, block)
-            send((round_num, ps_id ,block), to=self.neighbours)
+            send(('Proposal', round_num, ps_id, block), to=self.neighbours-{p})
 
     def UserSortition(round_num, step, role=None):
         """
@@ -149,7 +149,7 @@ class User(process):
         if votes > 0:
             Gossip(('CommiteeGossip', round, step, self, H(context.prev_block()), value))
 
-    def CountVotes(context, round, step, T_value, tau_value, lambda_value):
+    def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
         """
 
         This  procedure reads messages that belong to the current round and step. It processes the votes by calling
@@ -158,8 +158,8 @@ class User(process):
 
         @param context: It captures the current state of the ledger
         @type context: L{Context}
-        @param round: The current round of the BA.
-        @type round: C{int}
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
         @param step: The current step of BA that is in progress.
         @type step: C{int}
         @param T_value: Threshold of tau value for BA*
@@ -175,7 +175,7 @@ class User(process):
         counts = dict()
         voters = set()
         #TODO: Implement vote counting
-        msgs = setof((round_num, step, ps_id, h_last_block, value), (('CommitteeGossip', round_num, ps_id, step, h_last_block, value), _) in received)
+        msgs = setof((round_num, step, ps_id, h_last_block, value), (('CommitteeGossip', _round_num, ps_id, _step, h_last_block, value), _) in received)
         while True:
             for m in msgs:
                 votes, cmember_id, value = ProcessMsg(context, m)

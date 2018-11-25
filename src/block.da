@@ -3,11 +3,11 @@
 import datetime
 
 class Block(object):
-    def __init__(self, x, round=None, prev_hash=None, timestamp=datetime.datetime):
+    def __init__(self, x, round_num=None, prev_hash=None, timestamp=None):
         self.__val = x
         self.__prev_hash = prev_hash
-        self.__round = round
-        self.__timestamp = timestamp
+        self.__round = round_num
+        self.__timestamp = str(datetime.datetime.now()) if timestamp is None else timestamp
 
     def get_value(self):
         return self.__val
