@@ -19,7 +19,7 @@ class User(process):
     def receive(msg=('Propose',)):
         pass
 
-    def Gossip(round_num, step, h_last_block, value):
+    def Gossip(msg):
         """
 
         Sends a message to all its neighbours.
@@ -35,11 +35,11 @@ class User(process):
         @return:
         @rtype:
         """
-        send((round_num, step, h_last_block, value), to= self.neighbours)
+        send(msg, to= self.neighbours)
 
-    def receive(msg= (round_num, step, h_last_block, value), from_= p):
-        if not sent((round_num, step, h_last_block, value), to= self.neighbours):
-            send((round_num, step, h_last_block, value), to=self.neighbours)
+    def receive(msg= (round_num, step, ps_id, h_last_block, value), from_= p):
+        if not sent((round_num, step, ps_id, h_last_block, value), to= self.neighbours):
+            send((round_num, step, ps_id, h_last_block, value), to=self.neighbours)
 
     def UserSortition(round_num, step, role=None):
         """
@@ -105,8 +105,7 @@ class User(process):
 
     # TODO : Stub for ProcessMsg
     def ProcessMsg(ctx, msg):
-        ps_id, signed_m = msg  #TODO : The assignment will change depending on what the gossip message returns
-        (round, step, initiator_id, hprev, value) = signed_m
+        (round, step, initiator_id, hprev, value) = msg
 
         if hprev !=  H(ctx.prev_block()):
             return (0, None)
@@ -134,7 +133,7 @@ class User(process):
         """
         votes = UserSortition(round, step, role="committee")
         if votes > 0:
-            Gossip(round, step, H(context.prev_block()), value)
+            Gossip((round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round, step, T_value, tau_value, lambda_value):
         """
@@ -162,6 +161,7 @@ class User(process):
         counts = set()
         voters = set()
         #TODO: Implement vote counting
+        # msgs = setof((round_num, step, h_last_block, value), (round_num, step, h_last_block, value) in received)
         return H()
 
     def BinaryBA(context, round, block_hash):
