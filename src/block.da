@@ -1,6 +1,7 @@
 # https://people.csail.mit.edu/nickolai/papers/gilad-algorand-eprint.pdf
 # The Block metadata is Implemented as per section 8.1 in the paper.
 import datetime
+from prettytable import PrettyTable
 
 class Block(object):
     def __init__(self, x, round_num=None, prev_hash=None, timestamp=None):
@@ -34,10 +35,11 @@ class Block(object):
                     and self.__prev_hash == other.get_prev_hash() and self.__timestamp == other.get_timestamp())
 
     def __str__(self):
-        return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\
-            format(self.__val, self.__prev_hash[:7], self.__round, self.__timestamp)
 
-def main():
+        table = PrettyTable(field_names=['Value', 'PreviousHash', 'Round', 'Timestamp'])
+        table.title = 'Block {}'.format(self.__round)
+        table.add_row([self.__val, self.__prev_hash[:7], self.__round, self.__timestamp])
 
-    A = Block('ABCD', 0, 'DEFG')
-    output(A)
+        return str(table)
+        # return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\
+        #     format(self.__val, self.__prev_hash[:7], self.__round, self.__timestamp)

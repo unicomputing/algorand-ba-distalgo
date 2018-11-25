@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from block import Block
-import src.parameters as params
+import parameters as params
 
 class Controller(process):
 
@@ -133,7 +133,20 @@ class Controller(process):
         await(each(p in ps, has=received(('done',), from_=p)))
 
         output('Results:')
-        output(self.results)
+        tentative_blocks = set(block for status, block in self.results.values() if status == 'TENTATIVE')
+        final_blocks = set(block for status, block in self.results.values() if status == 'FINAL')
+        if len(tentative_blocks) == 0 and len(final_blocks) == 1:
+            output('Consensus Reached')
+            for x in final_blocks:
+                print('Final Block:\n{}'.format(x))
+        else:
+            output('Failed to reach consensus')
+            print('Tentative Blocks:')
+            for block in tentative_blocks:
+                print(block)
+            print('Final Blocks:')
+            for block in final_blocks:
+                print(block)
 
         send(('done',), to=parent())
 
