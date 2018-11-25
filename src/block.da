@@ -7,7 +7,7 @@ class Block(object):
         self.__val = x
         self.__prev_hash = prev_hash
         self.__round = round_num
-        self.__timestamp = str(datetime.datetime.now()) if timestamp is None else timestamp
+        self.__timestamp = str(datetime.datetime.now()) if timestamp is None and x is not None else timestamp
 
     def get_value(self):
         return self.__val
