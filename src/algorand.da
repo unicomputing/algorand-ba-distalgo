@@ -44,8 +44,12 @@ class User(process):
         send(msg, to= self.neighbours)
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
+        # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
         if not sent(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
+            # output('Forwarding CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
             send(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
+        # else:
+        #     output('Already Sent CommitteeGossip Once. Not Sending Again.')
 
     def receive(msg=('Proposal', round_num, ps_id, block), from_=p):
         if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
@@ -71,7 +75,7 @@ class User(process):
         @return: Number of votes that can be cast if that user is a committee member else 0.
         @rtype: C(set)
         """
-        output('User Sortition')
+        # output('User Sortition')
         assert role is None or role.lower() in 'committee' or role.lower() in 'proposer', \
             'Invalid role given for Sortition'
         assert round_num >= self.curr_round_num,\
@@ -93,7 +97,7 @@ class User(process):
             output('Requesting Committee')
             send(('Committee', step), to=self.controller)
             await(some(received(('SortitionCommittee', committee, _step), from_=self.controller)))
-            output('Received Committee')
+            # output('Received Committee')
             self.committee = committee
             self.curr_step = step
 
@@ -157,7 +161,7 @@ class User(process):
         """
         votes = UserSortition(round, step, role="committee")
         if votes > 0:
-            output('I am a Committee Member with {} votes'.format(votes))
+            output('I am a Committee Member at step {} with {} votes'.format(step, votes))
             Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
@@ -187,9 +191,13 @@ class User(process):
         voters = set()
         prev_msgs = set()
         while True:
+            -- CommitteeGossipYieldPoint
             msgs = setof((round_num, step, ps_id, h_last_block, value),
-                         (('CommitteeGossip', _round_num, ps_id, _step, h_last_block, value), _) in received,
+                         (('CommitteeGossip', _round_num, _step, ps_id, h_last_block, value), _) in received,
                          (round_num, step, ps_id, h_last_block, value) not in prev_msgs)
+            prev_msgs = prev_msgs.union(msgs)
+            # if msgs:
+            #     output('[CountVotes] msgs = {}'.format(msgs))
             for m in msgs:
                 votes, cmember_id, value = ProcessMsg(context, m)
                 if cmember_id in voters or votes == 0:
@@ -201,17 +209,17 @@ class User(process):
                     counts[value] = votes
 
                 if counts[value] > T_value * tau_value:
-                    # temp = setof(('CommitteeGossip', a, b, c, d, e),
-                    #              (('CommitteeGossip', a, b, c, d, e), _) in received)
-                    # output('temp = {}'.format(temp))
-                    output('CountVotes Selected {}'.format(value))
+                    # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
+                    #              (('CommitteeGossip', _round_num, _step, c, d, e), _) in received)
+                    # output('[CountVotes] At step {} temp = {}'.format(step, temp))
+                    output('CountVotes at step {} Selected {}'.format(step, value))
                     return value
             if time.time() > start + lambda_value:
-                # temp = setof(('CommitteeGossip', a, b, c, d, e), (('CommitteeGossip', a, b, c, d, e), _) in received)
-                # output('temp = {}'.format(temp))
-                output('CountVotes TIMEOUT')
+                # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
+                #              (('CommitteeGossip', _round_num, _step, c, d, e), _) in received)
+                # output('[CountVotes] At step {} temp = {}'.format(step, temp))
+                output('CountVotes at step {} Reached TIMEOUT'.format(step))
                 return "TIMEOUT"
-            prev_msgs = prev_msgs.union(msgs)
 
 
     def BinaryBA(context, round, block_hash):

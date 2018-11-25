@@ -75,8 +75,8 @@ class Controller(process):
                 self.committee = dict([(proc_id, self.W[i]) for proc_id, i in zip(list(self.ps),range(nprocs))
                                        if self.W[i]])
                 self.step = step
-            output('Finished Committee Sortition - STEP: {}'.format(step))
-            output('Committee = {}'.format(self.committee))
+                output('Finished Committee Sortition - STEP: {}'.format(step))
+                output('Committee at STEP {} = {}'.format(step, self.committee))
             return self.committee
 
         elif role.lower() in 'proposer':
