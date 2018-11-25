@@ -1,5 +1,6 @@
 import random
 import numpy as np
+from block import Block
 
 class Controller(process):
 
@@ -109,7 +110,8 @@ class Controller(process):
         return 0
 
     def receive(msg= ('result', result), from_=p):
-        self.results[p] = result
+        self.results[p] = (str(result[0]) if type(result[0]) is Block else result[0],
+                           str(result[1]) if type(result[1]) is Block else result[1])
         send(('Received result',), to=p)
 
     def run():
