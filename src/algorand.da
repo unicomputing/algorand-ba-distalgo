@@ -117,9 +117,16 @@ class User(process):
         elif role.lower() == 'proposer':
             return int(self in self.proposers)
 
-    # TODO : Stub for ProcessMsg
     def ProcessMsg(ctx, msg):
-        (round, step, initiator_id, hprev, value) = msg
+        """
+        @param ctx: It captures the current state of the ledger
+        @type ctx: L{Context}
+        @param msg: A tuple of (round_num, step, gossip_initiator, hash_prev_block, value)
+        @type msg: C{Tuple}
+        @return: Returns the number of votes that can be cast by the User named initiator_id, and the value that has been voted for by that User.
+        @rtype: C{int}, L{User}, L{H(Block)}
+        """
+        (round_num, step, initiator_id, hprev, value) = msg
 
         if hprev !=  H(ctx.prev_block()):
             return (0, None)
@@ -136,14 +143,16 @@ class User(process):
         is chosen for this step, the user gossips the message containing the value passed to CommitteeVote,
         which is typically the hash of some block.
 
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
         @param round: The current round of the BA.
         @type round: C{int}
         @param step: The current step of BA that is in progress.
         @type step: C{int}
         @param value: The highest priority block's hash that has been received by the user.
         @type value: L{H(Block)}
-        @return:
-        @rtype:
+        @return: None
+        @rtype: C{NoneType}
         """
         votes = UserSortition(round, step, role="committee")
         if votes > 0:

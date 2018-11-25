@@ -59,7 +59,7 @@ class Controller(process):
         assert role.lower() in 'committee' or role.lower() in 'proposers',\
             '[controller.da] Unrecognized role name given to Sortition'
         if role.lower() in 'committee':
-            assert self.step is None or type(step) is str or self.step == step or self.step == step - 1, \
+            assert self.step is None or type(step) is str or type(self.step) is str or self.step == step or self.step == step - 1, \
                 '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
             if self.step is None or self.step != step or self.step < step:
                 output('Committee Sortition Requirements Satisfied')
