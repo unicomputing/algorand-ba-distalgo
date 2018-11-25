@@ -32,3 +32,12 @@ class Block(object):
         else:
             return (self.__val == other.get_value() and self.__round == other.get_round()
                     and self.__prev_hash == other.get_prev_hash() and self.__timestamp == other.get_timestamp())
+
+    def __str__(self):
+        return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\
+            format(self.__val, self.__prev_hash, self.__round, self.__timestamp)
+
+def main():
+
+    A = Block('ABCD', 0, 'DEFG')
+    output(A)
