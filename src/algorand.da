@@ -22,6 +22,9 @@ class User(process):
     def receive(msg=('Propose',)):
         block = Block(str(self), self.curr_round_num, H(self.context.prev_block()))
         # TODO: Need to send to controller the block and the hash.
+        block_hash = H(block)
+        if block_hash not in self.blockofhash:
+            self.blockofhash[block_hash] = block
         Gossip(('Proposal', self.curr_round_num, self, block))
         if self.highest_priority_block == None or self.highest_priority_block < (self, block):
             self.highest_priority_block = (self, block)
