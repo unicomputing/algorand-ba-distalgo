@@ -3,12 +3,11 @@
 import datetime
 
 class Block(object):
-    def __init__(self, x):
+    def __init__(self, x, round=None, prev_hash=None, timestamp=datetime.datetime):
         self.__val = x
-        self.__next_hash = None
-        self.__prev_hash = None
-        self.__round = None
-        self.__timestamp = datetime.datetime.now()
+        self.__prev_hash = prev_hash
+        self.__round = round
+        self.__timestamp = timestamp
 
     def get_value(self):
         return self.__val
@@ -16,8 +15,20 @@ class Block(object):
     def get_round(self):
         return self.__round
 
-    def set_prev_block(self, block):
-        self.__prev_hash = block
+    def set_prev_hash(self, hash):
+        self.__prev_hash = hash
 
-    def set_next_block(self, block):
-        self.__next_hash = block
+    def get_prev_hash(self):
+        return self.__prev_hash
+
+    def get_timestamp(self):
+        return self.__timestamp
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        elif type(self) != type(other):
+            return False
+        else:
+            return (self.__val == other.get_value() and self.__round == other.get_round()
+                    and self.__prev_hash == other.get_prev_hash() and self.__timestamp == other.get_timestamp())
