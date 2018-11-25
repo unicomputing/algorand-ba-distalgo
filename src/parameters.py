@@ -12,3 +12,4 @@ tau_proposer = 2
 
 tau_final = 6
 
+max_steps = 5

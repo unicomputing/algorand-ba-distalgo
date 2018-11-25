@@ -5,6 +5,7 @@ from H import H
 import sys
 import time
 from parameters import *
+import random
 
 class User(process):
     def setup(neighbours, ctrl, context):
@@ -93,7 +94,7 @@ class User(process):
             self.curr_round_num = round_num
             self.curr_step = step
 
-        elif role.lower() in 'committee' and (type(step) is str or self.curr_step < step):
+        elif role.lower() in 'committee' and (type(step) is str or type(self.curr_step) is str or self.curr_step < step):
             output('Requesting Committee')
             send(('Committee', step), to=self.controller)
             await(some(received(('SortitionCommittee', committee, _step), from_=self.controller)))
@@ -239,8 +240,58 @@ class User(process):
         @rtype: L{H(Block)}
         """
         # TODO: need to Implement Binary BA block.
+
+        step = 1
+        r = block_hash
+        empty_hash = getEmptyBlockHash(round, block_hash)
+
+        while step < max_steps:
+            CommitteeVote(context, round, step, r)
+            r = CountVotes(context, round, step, T_step, tau_step,
+                             lambda_step)
+
+            if r=="TIMEOUT":
+                r = block_hash
+            elif r!=empty_hash:
+                for t in range(step+1,step+4):
+                    CommitteeVote(context, round, t, r)
+
+                if step==1 :
+                    CommitteeVote(context, round, "FINAL", r)
+
+                return r
+
+            step=step+1
+
+            CommitteeVote(context, round, step, r)
+            r = CountVotes(context, round, step, T_step, tau_step, lambda_step)
+
+            if r=="TIMEOUT":
+                r=empty_hash
+            elif r==empty_hash:
+                for t in range(step+1, step+4):
+                    CommitteeVote(context, round, t, r)
+                return r
+
+            step=step+1
+
+            CommitteeVote(context, round, step, r)
+            r=CountVotes(context, round, step, T_step, tau_step, lambda_step)
+            if r=="TIMEOUT":
+                if CommonCoin()==0:
+                    r=block_hash
+                else:
+                    r=empty_hash
+
+            step=step+1
+
         output('Binary BA*')
-        return H()
+
+    def CommonCoin():
+        if  random.random() < 0.5:
+            return 0
+        else:
+            return 1
 
     def Reduction(context, round, hblock):
         """
