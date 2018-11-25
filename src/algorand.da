@@ -8,7 +8,7 @@ from parameters import *
 
 class User(process):
     def setup(neighbours, ctrl, context):
-        self.neighbours = neighbours
+        self.neighbours = neighbours - {self}
         self.controller = ctrl
         self.context = context
         self.curr_round_num = 0
@@ -44,16 +44,16 @@ class User(process):
 
     def receive(msg= ('CommiteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
         if not sent(('CommiteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
-            send(('CommiteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours-{p})
+            send(('CommiteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
 
-    def receive(msg=('Proposal', round_num, ps_id ,block), from_=p):
-        if not sent(('Proposal', round_num, ps_id ,block), to=self.neighbours):
+    def receive(msg=('Proposal', round_num, ps_id, block), from_=p):
+        if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
             block_hash = H(block)
             if block_hash not in self.blockofhash:
                 self.blockofhash[block_hash] = (ps_id, block)
             if self.highest_priority_block == None or self.highest_priority_block < (ps_id, block):
                 self.highest_priority_block = (ps_id, block)
-            send(('Proposal', round_num, ps_id, block), to=self.neighbours-{p})
+            send(('Proposal', round_num, ps_id, block), to=self.neighbours)
 
     def UserSortition(round_num, step, role=None):
         """
@@ -281,6 +281,7 @@ class User(process):
     def run():
         await(received(('start_BA',), from_=self.controller))
         print(self.highest_priority_block, self, '*'*20)
+        print(json.dumps(self.blockofhash)
         result = BA(self.context, 0, self.highest_priority_block[1])
         output('Completed BA*')
 
