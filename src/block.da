@@ -34,8 +34,8 @@ class Block(object):
                     and self.__prev_hash == other.get_prev_hash() and self.__timestamp == other.get_timestamp())
 
     def __str__(self):
-        return 'BlockObject: [Val = {}, Round = {}, Timestamp = {}]'.\
-            format(self.__val, self.__round, self.__timestamp)
+        return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\
+            format(self.__val, self.__prev_hash[:7], self.__round, self.__timestamp)
 
 def main():
 
