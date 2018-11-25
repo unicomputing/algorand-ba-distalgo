@@ -20,6 +20,7 @@ class User(process):
 
     def receive(msg=('Propose',)):
         block = Block(str(self), self.curr_round_num, H(self.context.prev_block()))
+        # TODO: Need to send to controller the block and the hash.
         Gossip(('Proposal', self.curr_round_num, self, block))
         if self.highest_priority_block == None or self.highest_priority_block < (self, block):
             self.highest_priority_block = (self, block)
@@ -50,7 +51,7 @@ class User(process):
         if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
             block_hash = H(block)
             if block_hash not in self.blockofhash:
-                self.blockofhash[block_hash] = (ps_id, block)
+                self.blockofhash[block_hash] = block
             if self.highest_priority_block == None or self.highest_priority_block < (ps_id, block):
                 self.highest_priority_block = (ps_id, block)
             send(('Proposal', round_num, ps_id, block), to=self.neighbours)
@@ -253,7 +254,7 @@ class User(process):
         hblock1 = CountVotes(context, round, "REDUCTION_ONE", T_step, tau_step,
                              lambda_block + lambda_step)
         output('After CountVotes for REDUCTION_ONE')
-        empty_hash = H()  #TODO: need to create empty block.
+        empty_hash = getEmptyBlockHash(round, H(context.prev_block()))
         if hblock1 == "TIMEOUT":
             CommitteeVote(context, round, "REDUCTION_TWO", empty_hash)
         else:
@@ -264,6 +265,40 @@ class User(process):
         if hblock2 == "TIMEOUT":
             return empty_hash
         return hblock2
+
+    def BlockOfHash(block_hash):
+        """
+        Returns the Block corresponding the hash. It checks if it has received a block during a proposal with that hash,
+        else it queries from the L{Controller}
+
+        @param block_hash: Block's hash that has come to the consensus.
+        @type block_hash: L{H(Block)}
+        @return: The block corresponding the hash.
+        @rtype: L{Block}
+        """
+        if block_hash in self.blockofhash:
+            return self.blockofhash[block_hash]
+        else:
+            #TODO: Send a message to controller and get the block.
+            return None
+
+    def getEmptyBlockHash(round_num, hash_last_block):
+        """
+        Returns the empty hash block and stores the block hash and block in dictionary.
+
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param hash_last_block: The hash of the last block in the ledger.
+        @type hash_last_block: L{H(Block)}
+        @return: The hash of the empty block created.
+        @rtype: L{H(Block)}
+        """
+        block = Block(None, round_num, hash_last_block)
+        #TODO: Need to send to controller the empty block and the hash.
+        block_hash = H(block)
+        if block_hash not in self.blockofhash:
+            self.blockofhash[block_hash] = block
+        return block_hash
 
     def BA(context, round, block):
         """
@@ -286,13 +321,9 @@ class User(process):
         r = CountVotes(context, round, "FINAL", T_final, tau_final, lambda_step)
         output('After CountVotes for FINAL')
         if hblock_star == r:
-            return "FINAL", block  #TODO: Need to Get the BLOCKOFHASH(hblock_star)
+            return "FINAL", BlockOfHash(hblock_star)
         else:
-            return "TENTATIVE", block  #TODO: Need to Get the BLOCKOFHASH(hblock_star)
-
-    def anyof(s):
-        """return any element of set s if s is not empty or 'None' otherwise"""
-        return next(iter(s)) if s else None
+            return "TENTATIVE", BlockOfHash(hblock_star)
 
     def run():
         await(received(('start_BA',), from_=self.controller))
