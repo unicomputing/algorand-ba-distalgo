@@ -42,9 +42,9 @@ class User(process):
         """
         send(msg, to= self.neighbours)
 
-    def receive(msg= ('CommiteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
-        if not sent(('CommiteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
-            send(('CommiteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
+    def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
+        if not sent(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
+            send(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
 
     def receive(msg=('Proposal', round_num, ps_id, block), from_=p):
         if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
@@ -135,7 +135,7 @@ class User(process):
 
         return (votes, initiator_id, value)
 
-    def CommiteeVote(context, round, step, value):
+    def CommitteeVote(context, round, step, value):
         """
 
         The procedure checks if the user is selected for the committee in a given round and step of BA. The
@@ -156,7 +156,8 @@ class User(process):
         """
         votes = UserSortition(round, step, role="committee")
         if votes > 0:
-            Gossip(('CommiteeGossip', round, step, self, H(context.prev_block()), value))
+            output('I am a Committee Member with {} votes'.format(votes))
+            Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
         """
@@ -183,9 +184,11 @@ class User(process):
         start = time.time()
         counts = dict()
         voters = set()
-        #TODO: Implement vote counting
-        msgs = setof((round_num, step, ps_id, h_last_block, value), (('CommitteeGossip', _round_num, ps_id, _step, h_last_block, value), _) in received)
+        prev_msgs = set()
         while True:
+            msgs = setof((round_num, step, ps_id, h_last_block, value),
+                         (('CommitteeGossip', _round_num, ps_id, _step, h_last_block, value), _) in received,
+                         (round_num, step, ps_id, h_last_block, value) not in prev_msgs)
             for m in msgs:
                 votes, cmember_id, value = ProcessMsg(context, m)
                 if cmember_id in voters or votes == 0:
@@ -197,9 +200,17 @@ class User(process):
                     counts[value] = votes
 
                 if counts[value] > T_value * tau_value:
+                    # temp = setof(('CommitteeGossip', a, b, c, d, e),
+                    #              (('CommitteeGossip', a, b, c, d, e), _) in received)
+                    # output('temp = {}'.format(temp))
+                    output('CountVotes Selected {}'.format(value))
                     return value
             if time.time() > start + lambda_value:
+                # temp = setof(('CommitteeGossip', a, b, c, d, e), (('CommitteeGossip', a, b, c, d, e), _) in received)
+                # output('temp = {}'.format(temp))
+                output('CountVotes TIMEOUT')
                 return "TIMEOUT"
+            prev_msgs = prev_msgs.union(msgs)
 
 
     def BinaryBA(context, round, block_hash):
@@ -237,20 +248,16 @@ class User(process):
         @rtype: L{H(Block)}
         """
         output('Reduction')
-        CommiteeVote(context, round, "REDUCTION_ONE", hblock)
-        if await(False):
-            pass
-        elif timeout(lambda_block + lambda_step):
-            pass
+        CommitteeVote(context, round, "REDUCTION_ONE", hblock)
         output('After CommitteeVote REDUCTION_ONE')
         hblock1 = CountVotes(context, round, "REDUCTION_ONE", T_step, tau_step,
                              lambda_block + lambda_step)
         output('After CountVotes for REDUCTION_ONE')
         empty_hash = H()  #TODO: need to create empty block.
         if hblock1 == "TIMEOUT":
-            CommiteeVote(context, round, "REDUCTION_TWO", empty_hash)
+            CommitteeVote(context, round, "REDUCTION_TWO", empty_hash)
         else:
-            CommiteeVote(context, round, "REDUCTION_TWO", hblock1)
+            CommitteeVote(context, round, "REDUCTION_TWO", hblock1)
         output('After CommitteeVote REDUCTION_TWO')
         hblock2 = CountVotes(context, round, "REDUCTION_TWO", T_step, tau_step, lambda_step)
         output('After CountVotes for REDUCTION_TWO')
