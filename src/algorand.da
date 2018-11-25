@@ -15,9 +15,14 @@ class User(process):
         self.curr_step = None
         self.committee = None
         self.proposers = None
+        self.blockofhash = {}
+        self.highest_priority_block = None
 
     def receive(msg=('Propose',)):
-        pass
+        block = Block(str(self), self.curr_round_num, H(self.context.prev_block()))
+        Gossip(('Proposal', self.curr_round_num, self, block))
+        if self.highest_priority_block == None or self.highest_priority_block < (self, block):
+            self.highest_priority_block = (self, block)
 
     def Gossip(msg):
         """
@@ -37,9 +42,18 @@ class User(process):
         """
         send(msg, to= self.neighbours)
 
-    def receive(msg= (round_num, step, ps_id, h_last_block, value), from_= p):
+    def receive(msg= ('CommiteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
         if not sent((round_num, step, ps_id, h_last_block, value), to= self.neighbours):
             send((round_num, step, ps_id, h_last_block, value), to=self.neighbours)
+
+    def receive(msg=('Proposal', round_num, ps_id ,block), from_=p):
+        if not sent((round_num, ps_id ,block), to=self.neighbours):
+            block_hash = H(block)
+            if block_hash not in self.blockofhash:
+                self.blockofhash[block_hash] = (ps_id, block)
+            if self.highest_priority_block == None or self.highest_priority_block < (ps_id, block):
+                self.highest_priority_block = (ps_id, block)
+            send((round_num, ps_id ,block), to=self.neighbours)
 
     def UserSortition(round_num, step, role=None):
         """
@@ -133,7 +147,7 @@ class User(process):
         """
         votes = UserSortition(round, step, role="committee")
         if votes > 0:
-            Gossip((round, step, self, H(context.prev_block()), value))
+            Gossip(('CommiteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round, step, T_value, tau_value, lambda_value):
         """
@@ -260,11 +274,14 @@ class User(process):
         else:
             return "TENTATIVE", block  #TODO: Need to Get the BLOCKOFHASH(hblock_star)
 
+    def anyof(s):
+        """return any element of set s if s is not empty or 'None' otherwise"""
+        return next(iter(s)) if s else None
+
     def run():
         await(received(('start_BA',), from_=self.controller))
-
-        highest_priority_block = None # for the round BA* is running.
-        result = BA(self.context, 0, highest_priority_block)
+        print(self.highest_priority_block, self, '*'*20)
+        result = BA(self.context, 0, self.highest_priority_block[1])
         output('Completed BA*')
 
         send(('result', result), to=self.controller)

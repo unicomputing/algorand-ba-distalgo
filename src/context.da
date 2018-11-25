@@ -10,9 +10,6 @@ class Context():
     def add_block(self, block):
         if(not self.__last_block):
             self.__first_block = block
-        else:
-            self.__last_block.set_next_block(H(block))
-        block.set_prev_block(H(self.__last_block))
         self.__last_block = block
 
     def prev_block(self):
