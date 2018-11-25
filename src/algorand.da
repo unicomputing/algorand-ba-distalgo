@@ -124,7 +124,7 @@ class User(process):
 
         votes = UserVerifySort(initiator_id, 'committee')
 
-        return (votes, value)
+        return (votes, initiator_id, value)
 
     def CommiteeVote(context, round, step, value):
         """
@@ -170,11 +170,26 @@ class User(process):
         @rtype: L{H(Block)}
         """
         start = time.time()
-        counts = set()
+        counts = dict()
         voters = set()
         #TODO: Implement vote counting
-        # msgs = setof((round_num, step, h_last_block, value), (round_num, step, h_last_block, value) in received)
-        return H()
+        msgs = setof((round_num, step, h_last_block, value), ((round_num, step, h_last_block, value), _) in received)
+        while True:
+            for m in msgs:
+                votes, cmember_id, value = ProcessMsg(context, m)
+                if cmember_id in voters or votes == 0:
+                    continue
+                voters.add(cmember_id)
+                if value in counts:
+                    counts[value] += votes
+                else:
+                    counts[value] = votes
+
+                if counts[value] > T_value * tau_value:
+                    return value
+            if time.time() > start + lambda_value:
+                return "TIMEOUT"
+
 
     def BinaryBA(context, round, block_hash):
         """
