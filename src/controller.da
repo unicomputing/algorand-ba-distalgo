@@ -19,6 +19,7 @@ class Controller(process):
         self.num_committee = self.nprocs//2  # Assigned n/2 for no reason. Need correct way of doing this.
         self.num_proposers = self.nprocs//4  # Assigned n/4 for no reason. Need correct way of doing this.
         self.results = dict()
+        self.committees_created = dict()
 
     def receive(msg=('All', round_num, step), from_= p):
         proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
@@ -26,7 +27,11 @@ class Controller(process):
         send(('SortitionAll', proposers, committee, step), to= p)
 
     def receive(msg=('Committee', step), from_= p):
-        committee = Sortition(self.num_committee, None, step, 'Committee')
+        if step in self.committees_created:
+            committee = self.committees_created[step]
+        else:
+            committee = Sortition(self.num_committee, None, step, 'Committee')
+        self.committees_created[step] = committee
         send(('SortitionCommittee', committee, step), to= p)
 
     def receive(msg=('Proposer', round_num), from_= p):
