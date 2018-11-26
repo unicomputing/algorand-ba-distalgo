@@ -149,7 +149,7 @@ class User(process):
             await(self.CommitteeMemberCheck >= 0)
             return self.CommitteeMemberCheck
 
-    def BlindVerifySort(proc_id, role):
+    def BlindVerifySort(proc_id, role, round_num, step):
         assert role is None or role.lower() in 'proposers' or role.lower() in 'committee', \
             'Unknown role {}'.format(role)
         if role.lower() in 'committee':
@@ -185,7 +185,7 @@ class User(process):
         if hprev !=  H(ctx.prev_block()):
             return (0, None)
 
-        votes = BlindVerifySort(initiator_id, 'committee')
+        votes = BlindVerifySort(initiator_id, 'committee', round_num, step)
 
         return (votes, initiator_id, value)
 
@@ -327,8 +327,10 @@ class User(process):
             r=CountVotes(context, round, step, T_step, tau_step, lambda_step)
             if r=="TIMEOUT":
                 if CommonCoin()==0:
+                    output('[BinaryBA*] CommonCoin returned 0, so using block_hash')
                     r=block_hash
                 else:
+                    output('[BinaryBA*] CommonCoin returned 1, so using empty_hash')
                     r=empty_hash
 
             step=step+1
@@ -336,7 +338,7 @@ class User(process):
         output('Binary BA*')
 
     def CommonCoin():
-        if  random.random() < 0.5:
+        if random.random() < 0.5:
             return 0
         else:
             return 1
