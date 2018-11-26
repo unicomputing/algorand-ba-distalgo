@@ -43,6 +43,22 @@ class Controller(process):
         proposers = Sortition(self.num_proposers, round_num, None, 'Committee')
         send(('SortitionProposers', proposers, round_num), to= p)
 
+    def receive(msg=('IsUserInCommittee', round_num, step, q), from_=p):
+        if step == 'FINAL':
+            self.committees_created[step] = Sortition(self.num_final_committee, None, step, 'Committee')
+        elif step not in self.committees_created:
+            self.committees_created[step] = Sortition(self.num_committee, None, step, 'Committee')
+
+        if q in self.committees_created[step]:
+            send(('InCommitteeReply', round_num, step, self.committees_created[step][q]), to=p)
+        else:
+            send(('InCommitteeReply', round_num, step, 0), to=p)
+
+    def receive(msg=('IsUserProposer', round_num, q), from_=p):
+        if self.round_num is None or self.round_num < round_num:
+            Sortition(self.num_proposers, round_num, None, 'Proposers')
+        send(('IsProposerReply', round_num, int(q in self.proposers)), to=p)
+
     def Sortition(num_role, round, step, role):
         """
 
@@ -89,7 +105,7 @@ class Controller(process):
                 output('Committee at STEP {} = {}'.format(step, self.committee))
             return self.committee
 
-        elif role.lower() in 'proposer':
+        elif role.lower() in 'proposers':
             assert self.round is None or self.round == round or self.round == round - 1, \
                 '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.round,
                                                                                                           round)

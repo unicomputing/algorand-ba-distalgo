@@ -19,6 +19,9 @@ class User(process):
         self.blockofhash = {}
         self.highest_priority_block = None
 
+        self.CommitteeMemberCheck = -1
+        self.ProposerCheck = -1
+
     def receive(msg=('Propose',)):
         block = Block(str(self), self.curr_round_num, H(self.context.prev_block()))
         # TODO: Need to send to controller the block and the hash.
@@ -88,7 +91,7 @@ class User(process):
         assert type(step) is str or type(self.curr_step) is str or step >= self.curr_step, \
             'Step No. {} for which Sortition is requested is over. Curr Step No. is {}'.format(step, self.curr_step)
 
-        if role is None and (self.curr_round_num is None or self.curr_step is None
+        if role is None and (self.curr_round_num is None or self.curr_step is None or type(self.curr_step) is str
                              or self.curr_round_num < round_num or self.curr_step < step):
             send(('All', round_num, step), to=self.controller)
             await(some(received(('SortitionAll', proposers, committee, _step), from_=self.controller)))
@@ -105,7 +108,7 @@ class User(process):
             self.committee = committee
             self.curr_step = step
 
-        elif role.lower() in 'proposer' and self.curr_round_num < round_num:
+        elif role.lower() in 'proposers' and self.curr_round_num < round_num:
             send(('Proposer', round_num), to=self.controller)
             await(some(received(('SortitionProposers', proposers, _round_num), from_=self.controller)))
             self.proposers = proposers
@@ -118,12 +121,54 @@ class User(process):
         else:
             return (self in self.proposers, self.committee[self] if self in self.committee else 0)
 
+    def receive(msg=('InCommitteeReply', round_num, step, votes)):
+        self.CommitteeMemberCheck = votes
+
+    def receive(msg=('IsProposerReply', round_num, retval)):
+        self.ProposerCheck = retval
+
+    def BlindSortition(round_num, step, role=None):
+        assert role is None or role.lower() in 'proposers' or role.lower() in 'committee', \
+            'Unknown role {}'.format(role)
+        if role is None:
+            self.CommitteeMemberCheck = -1
+            send(('IsUserInCommittee', round_num, step, self), to=self.controller)
+            await(self.CommitteeMemberCheck >= 0)
+            self.ProposerCheck = -1
+            send(('IsUserProposer', round_num, self), to=self.controller)
+            await(self.ProposerCheck >= 0)
+            return (self.ProposerCheck, self.CommitteeMemberCheck)
+        elif role.lower() in 'proposers':
+            self.ProposerCheck = -1
+            send(('IsUserProposer', round_num, self), to=self.controller)
+            await(self.ProposerCheck >= 0)
+            return self.ProposerCheck
+        elif role.lower() in 'committee':
+            self.CommitteeMemberCheck = -1
+            send(('IsUserInCommittee', round_num, step, self), to=self.controller)
+            await(self.CommitteeMemberCheck >= 0)
+            return self.CommitteeMemberCheck
+
+    def BlindVerifySort(proc_id, role):
+        assert role is None or role.lower() in 'proposers' or role.lower() in 'committee', \
+            'Unknown role {}'.format(role)
+        if role.lower() in 'committee':
+            self.CommitteeMemberCheck = -1
+            send(('IsUserInCommittee', round_num, step, proc_id), to=self.controller)
+            await(self.CommitteeMemberCheck >= 0)
+            return self.CommitteeMemberCheck
+        elif role.lower() in 'proposers':
+            self.ProposerCheck = -1
+            send(('IsUserProposer', round_num, proc_id), to=self.controller)
+            await(self.ProposerCheck >= 0)
+            return self.ProposerCheck
+
     def UserVerifySort(proc_id, role):
-        if role.lower() == 'committee':
+        if role.lower() in 'committee':
             if proc_id in self.committee:
                 return self.committee[proc_id]
             return 0
-        elif role.lower() == 'proposer':
+        elif role.lower() in 'proposers':
             return int(self in self.proposers)
 
     def ProcessMsg(ctx, msg):
@@ -140,7 +185,7 @@ class User(process):
         if hprev !=  H(ctx.prev_block()):
             return (0, None)
 
-        votes = UserVerifySort(initiator_id, 'committee')
+        votes = BlindVerifySort(initiator_id, 'committee')
 
         return (votes, initiator_id, value)
 
@@ -163,7 +208,7 @@ class User(process):
         @return: None
         @rtype: C{NoneType}
         """
-        votes = UserSortition(round, step, role="committee")
+        votes = BlindSortition(round, step, role="committee")
         if votes > 0:
             output('I am a Committee Member at step {} with {} votes'.format(step, votes))
             Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
