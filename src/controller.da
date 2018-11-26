@@ -144,7 +144,7 @@ class Controller(process):
                 else:
                     tentative_users[block] = [user]
             else:
-                if block in tentative_users:
+                if block in final_users:
                     final_users[block].append(user)
                 else:
                     final_users[block] = [user]
