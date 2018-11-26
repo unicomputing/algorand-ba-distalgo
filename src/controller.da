@@ -135,6 +135,20 @@ class Controller(process):
         output('Results:')
         tentative_blocks = set(block for status, block in self.results.values() if status == 'TENTATIVE')
         final_blocks = set(block for status, block in self.results.values() if status == 'FINAL')
+        tentative_users = dict()
+        final_users = dict()
+        for user, (status, block) in self.results.items():
+            if status == 'TENTATIVE':
+                if block in tentative_users:
+                    tentative_users[block].append(user)
+                else:
+                    tentative_users[block] = [user]
+            else:
+                if block in tentative_users:
+                    final_users[block].append(user)
+                else:
+                    final_users[block] = [user]
+
         if len(tentative_blocks) == 0 and len(final_blocks) == 1:
             output('Consensus Reached')
             for x in final_blocks:
@@ -143,9 +157,11 @@ class Controller(process):
             output('Failed to reach consensus')
             print('Tentative Blocks:')
             for block in tentative_blocks:
+                print('List of users with this block: {}'.format(tentative_users[block]))
                 print(block)
             print('Final Blocks:')
             for block in final_blocks:
+                print('List of users with this block: {}'.format(final_users[block]))
                 print(block)
 
         send(('done',), to=parent())
