@@ -328,6 +328,16 @@ class User(process):
             return empty_hash
         return hblock2
 
+    def receive(msg=('BlockOfHashIs', block_hash, block), from_=p):
+        if H(block) != block_hash:
+            output('WARNING: {} IS A TRAITOR!'.format(p))
+        else:
+            self.blockofhash[block_hash] = block
+
+    def receive(msg=('WhatIsBlock', block_hash), from_=p):
+        if block_hash in self.blockofhash:
+            send(('BlockOfHashIs', block_hash, self.blockofhash[block_hash]), to=p)
+
     def BlockOfHash(block_hash):
         """
         Returns the Block corresponding the hash. It checks if it has received a block during a proposal with that hash,
@@ -338,11 +348,10 @@ class User(process):
         @return: The block corresponding the hash.
         @rtype: L{Block}
         """
-        if block_hash in self.blockofhash:
-            return self.blockofhash[block_hash]
-        else:
-            #TODO: Send a message to controller and get the block.
-            return None
+        if block_hash not in self.blockofhash:
+            send(('WhatIsBlock', block_hash), to=self.neighbours)
+            await(block_hash in self.blockofhash)
+        return self.blockofhash[block_hash]
 
     def getEmptyBlockHash(round_num, hash_last_block):
         """
