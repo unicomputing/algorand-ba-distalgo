@@ -25,6 +25,7 @@ class User(process):
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
+        send(('Proposal', self.curr_round_num, block), to= self.controller)
         Gossip(('Proposal', self.curr_round_num, self, block))
         if self.highest_priority_block == None or self.highest_priority_block < (self, block):
             self.highest_priority_block = (self, block)

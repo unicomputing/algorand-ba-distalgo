@@ -34,6 +34,9 @@ class Block(object):
             return (self.__val == other.get_value() and self.__round == other.get_round()
                     and self.__prev_hash == other.get_prev_hash() and self.__timestamp == other.get_timestamp())
 
+    def __hash__(self):
+        return hash(( self.__val, self.__prev_hash, self.__round, self.__timestamp))
+
     def __str__(self):
 
         table = PrettyTable(field_names=['Value', 'PreviousHash', 'Round', 'Timestamp'])
