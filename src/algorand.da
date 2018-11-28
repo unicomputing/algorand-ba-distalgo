@@ -216,7 +216,7 @@ class User(process):
                     # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
                     #              (('CommitteeGossip', _round_num, _step, c, d, e), _) in received)
                     # output('[CountVotes] At step {} temp = {}'.format(step, temp))
-                    output('CountVotes at step {} Selected {} with {} votes'.format(step, value, votes))
+                    output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]))
                     return value
             if time.time() > start + lambda_value:
                 # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
