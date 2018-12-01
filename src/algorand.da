@@ -109,6 +109,8 @@ class User(process):
             elif self.highest_priority_block[0] is not None and self.highest_priority_block[0] == ps_id \
                     and block != self.highest_priority_block[1] and ps_id != self:
                 self.highest_priority_block = (ps_id, Block(None, self.curr_round_num, H(self.context.prev_block())))
+            else:
+                return
             send(('Proposal', round_num, ps_id, block), to=self.neighbours)
 
     def receive(msg=('InCommitteeReply', round_num, step, votes)):
