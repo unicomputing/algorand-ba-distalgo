@@ -1,0 +1,439 @@
+from controller import Controller
+from context import Context
+from block import Block
+from H import H
+import sys
+import time
+from parameters import *
+import random
+from controller import ResourceUsageData
+
+class User(process):
+    def setup(neighbours, ctrl, context):
+        self.neighbours = neighbours - {self}
+        self.controller = ctrl
+        self.context = context
+        self.curr_round_num = 0
+        self.curr_step = None
+        self.committee = None
+        self.proposers = None
+        self.blockofhash = {}
+        self.highest_priority_block = None
+        self.rudata = ResourceUsageData()
+
+    def receive(msg=('Propose',)):
+        block = Block(str(self), self.curr_round_num, H(self.context.prev_block()))
+        # TODO: Need to send to controller the block and the hash.
+        block_hash = H(block)
+        if block_hash not in self.blockofhash:
+            self.blockofhash[block_hash] = block
+        Gossip(('Proposal', self.curr_round_num, self, block))
+        if self.highest_priority_block == None or self.highest_priority_block < (self, block):
+            self.highest_priority_block = (self, block)
+
+    def Gossip(msg):
+        """
+
+        Sends a message to all its neighbours.
+
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param h_last_block: The hash of the previously selected block in the ledger.
+        @type h_last_block: L{H(Block)}
+        @param value: The hash value of the current proposed block
+        @type value: L{H(Block)}
+        @return:
+        @rtype:
+        """
+        send(msg, to= self.neighbours)
+
+    def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
+        # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
+        if not sent(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
+            # output('Forwarding CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
+            send(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
+        # else:
+        #     output('Already Sent CommitteeGossip Once. Not Sending Again.')
+
+    def receive(msg=('Proposal', round_num, ps_id, block), from_=p):
+        if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
+            block_hash = H(block)
+            if block_hash not in self.blockofhash:
+                self.blockofhash[block_hash] = block
+            if self.highest_priority_block == None or self.highest_priority_block < (ps_id, block):
+                self.highest_priority_block = (ps_id, block)
+            send(('Proposal', round_num, ps_id, block), to=self.neighbours)
+
+    def UserSortition(round_num, step, role=None):
+        """
+
+        Sends request to L{controller} to perform the soritition.
+
+
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param role: A string mentioning the role the user.
+        @type role: C(str)
+        @return: Number of votes that can be cast if that user is a committee member else 0.
+        @rtype: C(set)
+        """
+        # output('User Sortition')
+        assert role is None or role.lower() in 'committee' or role.lower() in 'proposer', \
+            'Invalid role given for Sortition'
+        assert round_num >= self.curr_round_num,\
+            'Round No. {} for which Sortition is requested is over. Curr Round No. is {}'.format(round_num,
+                                                                                                 self.curr_round_num)
+        assert type(step) is str or type(self.curr_step) is str or step >= self.curr_step, \
+            'Step No. {} for which Sortition is requested is over. Curr Step No. is {}'.format(step, self.curr_step)
+
+        if role is None and (self.curr_round_num is None or self.curr_step is None
+                             or self.curr_round_num < round_num or self.curr_step < step):
+            send(('All', round_num, step), to=self.controller)
+            await(some(received(('SortitionAll', proposers, committee, _step), from_=self.controller)))
+            self.committee = committee
+            self.proposers = proposers
+            self.curr_round_num = round_num
+            self.curr_step = step
+
+        elif role.lower() in 'committee' and (type(step) is str or type(self.curr_step) is str or self.curr_step < step):
+            output('Requesting Committee')
+            send(('Committee', step), to=self.controller)
+            await(some(received(('SortitionCommittee', committee, _step), from_=self.controller)))
+            # output('Received Committee')
+            self.committee = committee
+            self.curr_step = step
+
+        elif role.lower() in 'proposer' and self.curr_round_num < round_num:
+            send(('Proposer', round_num), to=self.controller)
+            await(some(received(('SortitionProposers', proposers, _round_num), from_=self.controller)))
+            self.proposers = proposers
+            self.curr_round_num = round_num
+
+        if role.lower() in 'committee':
+            return self.committee[self] if self in self.committee else 0
+        elif role.lower() in 'proposer':
+            return self in self.proposers
+        else:
+            return (self in self.proposers, self.committee[self] if self in self.committee else 0)
+
+    def UserVerifySort(proc_id, role):
+        if role.lower() == 'committee':
+            if proc_id in self.committee:
+                return self.committee[proc_id]
+            return 0
+        elif role.lower() == 'proposer':
+            return int(self in self.proposers)
+
+    def ProcessMsg(ctx, msg):
+        """
+        @param ctx: It captures the current state of the ledger
+        @type ctx: L{Context}
+        @param msg: A tuple of (round_num, step, gossip_initiator, hash_prev_block, value)
+        @type msg: C{Tuple}
+        @return: Returns the number of votes that can be cast by the User named initiator_id, and the value that has been voted for by that User.
+        @rtype: C{int}, L{User}, L{H(Block)}
+        """
+        (round_num, step, initiator_id, hprev, value) = msg
+
+        if hprev !=  H(ctx.prev_block()):
+            return (0, None)
+
+        votes = UserVerifySort(initiator_id, 'committee')
+
+        return (votes, initiator_id, value)
+
+    def CommitteeVote(context, round, step, value):
+        """
+
+        The procedure checks if the user is selected for the committee in a given round and step of BA. The
+        CommitteeVote procedure to check if the user is chosen to participate in the committee. If the user
+        is chosen for this step, the user gossips the message containing the value passed to CommitteeVote,
+        which is typically the hash of some block.
+
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param value: The highest priority block's hash that has been received by the user.
+        @type value: L{H(Block)}
+        @return: None
+        @rtype: C{NoneType}
+        """
+        votes = UserSortition(round, step, role="committee")
+        if votes > 0:
+            output('I am a Committee Member at step {} with {} votes'.format(step, votes))
+            Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
+
+    def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
+        """
+
+        This  procedure reads messages that belong to the current round and step. It processes the votes by calling
+        the ProcessMsg() procedure for every message , which ensures that the vote is valid. Count the number of votes
+        for each proposed blocks hash value and returns the block if the value is more than a threshold.
+
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param T_value: Threshold of tau value for BA*
+        @type T_value: C{float}
+        @param tau_value: Expected number of block or values.
+        @type tau_value: C{int}
+        @param lambda_value: Timeout for receiving a block
+        @type lambda_value: C{int}
+        @return: Returns the hash of the block that has maximum votes.
+        @rtype: L{H(Block)}
+        """
+        start = time.time()
+        counts = dict()
+        voters = set()
+        prev_msgs = set()
+        while True:
+            -- CommitteeGossipYieldPoint
+            msgs = setof((round_num, step, ps_id, h_last_block, value),
+                         (('CommitteeGossip', _round_num, _step, ps_id, h_last_block, value), _) in received,
+                         (round_num, step, ps_id, h_last_block, value) not in prev_msgs)
+            prev_msgs = prev_msgs.union(msgs)
+            # if msgs:
+            #     output('[CountVotes] msgs = {}'.format(msgs))
+            for m in msgs:
+                votes, cmember_id, value = ProcessMsg(context, m)
+                if cmember_id in voters or votes == 0:
+                    continue
+                voters.add(cmember_id)
+                if value in counts:
+                    counts[value] += votes
+                else:
+                    counts[value] = votes
+
+                if counts[value] > T_value * tau_value:
+                    # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
+                    #              (('CommitteeGossip', _round_num, _step, c, d, e), _) in received)
+                    # output('[CountVotes] At step {} temp = {}'.format(step, temp))
+                    output('CountVotes at step {} Selected {} with {} votes'.format(step, value, votes))
+                    return value
+            if time.time() > start + lambda_value:
+                # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
+                #              (('CommitteeGossip', _round_num, _step, c, d, e), _) in received)
+                # output('[CountVotes] At step {} temp = {}'.format(step, temp))
+                output('CountVotes at step {} Reached TIMEOUT'.format(step))
+                return "TIMEOUT"
+
+
+    def BinaryBA(context, round, block_hash):
+        """
+        In the procedure, it reaches consensus on one of two values: either the hash passed to BinaryBA() or the hash
+        of the empty block. BinaryBA() relies on Reduction() to ensure that at most one non-empty block hash is passed
+        to BinaryBA() by all honest users.
+
+
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param block_hash: The highest priority block's hash that has been received by the user.
+        @type block_hash: L{H(Block)}
+        @return: Returns the hash of the block that has been chosen.
+        @rtype: L{H(Block)}
+        """
+        # TODO: need to Implement Binary BA block.
+
+        step = 1
+        r = block_hash
+        empty_hash = getEmptyBlockHash(round, block_hash)
+
+        while step < max_steps:
+            CommitteeVote(context, round, step, r)
+            r = CountVotes(context, round, step, T_step, tau_step,
+                             lambda_step)
+
+            if r=="TIMEOUT":
+                r = block_hash
+            elif r!=empty_hash:
+                for t in range(step+1,step+4):
+                    CommitteeVote(context, round, t, r)
+
+                if step==1 :
+                    CommitteeVote(context, round, "FINAL", r)
+
+                return r
+
+            step=step+1
+
+            CommitteeVote(context, round, step, r)
+            r = CountVotes(context, round, step, T_step, tau_step, lambda_step)
+
+            if r=="TIMEOUT":
+                r=empty_hash
+            elif r==empty_hash:
+                for t in range(step+1, step+4):
+                    CommitteeVote(context, round, t, r)
+                return r
+
+            step=step+1
+
+            CommitteeVote(context, round, step, r)
+            r=CountVotes(context, round, step, T_step, tau_step, lambda_step)
+            if r=="TIMEOUT":
+                if CommonCoin()==0:
+                    r=block_hash
+                else:
+                    r=empty_hash
+
+            step=step+1
+
+        output('Binary BA*')
+
+    def CommonCoin():
+        if  random.random() < 0.5:
+            return 0
+        else:
+            return 1
+
+    def Reduction(context, round, hblock):
+        """
+        Converts the problem of reaching consensus on an arbitarary value to reaching on consensus on one of the two
+        values either a specific proposed block or hash of an empty hash block.
+
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param hblock: The highest priority block's hash that has been received by the user.
+        @type hblock: L{H(Block)}
+        @return: Returns the hash of the block that has been chosen.
+        @rtype: L{H(Block)}
+        """
+        output('Reduction')
+        CommitteeVote(context, round, "REDUCTION_ONE", hblock)
+        output('After CommitteeVote REDUCTION_ONE')
+        hblock1 = CountVotes(context, round, "REDUCTION_ONE", T_step, tau_step,
+                             lambda_block + lambda_step)
+        output('After CountVotes for REDUCTION_ONE')
+        empty_hash = getEmptyBlockHash(round, H(context.prev_block()))
+        if hblock1 == "TIMEOUT":
+            CommitteeVote(context, round, "REDUCTION_TWO", empty_hash)
+        else:
+            CommitteeVote(context, round, "REDUCTION_TWO", hblock1)
+        output('After CommitteeVote REDUCTION_TWO')
+        hblock2 = CountVotes(context, round, "REDUCTION_TWO", T_step, tau_step, lambda_step)
+        output('After CountVotes for REDUCTION_TWO')
+        if hblock2 == "TIMEOUT":
+            return empty_hash
+        return hblock2
+
+    def receive(msg=('BlockOfHashIs', block_hash, block), from_=p):
+        if H(block) != block_hash:
+            output('WARNING: {} IS A TRAITOR!'.format(p))
+        else:
+            self.blockofhash[block_hash] = block
+
+    def receive(msg=('WhatIsBlock', block_hash), from_=p):
+        if block_hash in self.blockofhash:
+            send(('BlockOfHashIs', block_hash, self.blockofhash[block_hash]), to=p)
+
+    def BlockOfHash(block_hash):
+        """
+        Returns the Block corresponding the hash. It checks if it has received a block during a proposal with that hash,
+        else it queries from the L{Controller}
+
+        @param block_hash: Block's hash that has come to the consensus.
+        @type block_hash: L{H(Block)}
+        @return: The block corresponding the hash.
+        @rtype: L{Block}
+        """
+        if block_hash not in self.blockofhash:
+            send(('WhatIsBlock', block_hash), to=self.neighbours)
+            await(block_hash in self.blockofhash)
+        return self.blockofhash[block_hash]
+
+    def getEmptyBlockHash(round_num, hash_last_block):
+        """
+        Returns the empty hash block and stores the block hash and block in dictionary.
+
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param hash_last_block: The hash of the last block in the ledger.
+        @type hash_last_block: L{H(Block)}
+        @return: The hash of the empty block created.
+        @rtype: L{H(Block)}
+        """
+        block = Block(None, round_num, hash_last_block)
+        #TODO: Need to send to controller the empty block and the hash.
+        block_hash = H(block)
+        if block_hash not in self.blockofhash:
+            self.blockofhash[block_hash] = block
+        return block_hash
+
+    def BA(context, round, block):
+        """
+        The highest level Byzantine Agreement Protocol procedure that is run in each user process, to come to consensus
+        on proposed or an empty block.
+        @param context: It captures the current state of the ledger
+        @type context: L{Context}
+        @param round: The current round of the BA.
+        @type round: C{int}
+        @param block: The highest priority block that has been received by the user.
+        @type block: L{Block}
+        @return: tuple containing status of consensus and the block which has been agreed upon.
+        @rtype: C{str}, L{Block}
+        """
+        output('Starting BA*')
+        hblock = Reduction(context, round, H(block))
+        output('Reduction Done')
+        hblock_star = BinaryBA(context, round, hblock)
+        output('BinaryBA* Done')
+        r = CountVotes(context, round, "FINAL", T_final, tau_final, lambda_step)
+        output('After CountVotes for FINAL')
+        if hblock_star == r:
+            return "FINAL", BlockOfHash(hblock_star)
+        else:
+            return "TENTATIVE", BlockOfHash(hblock_star)
+
+    def run():
+        self.rudata.start()
+        await(received(('start_BA',), from_=self.controller))
+        result = BA(self.context, 0, self.highest_priority_block[1])
+        output('Completed BA*')
+
+        send(('result', result), to=self.controller)
+        await(received(('Received result',), from_=self.controller))
+
+        self.rudata.end()
+        send(('done', self.rudata, self), to=self.controller)
+        send(('done', ), to=self.controller)
+        output('terminating User ', self)
+        # await(received(('done',), from_=parent()))
+
+def initial_context():
+    """
+    The initial context of the ledger.
+
+    @return: The context object with a starting block.
+    @rtype: L{Block}
+    """
+    ctx = Context()
+    starting_block = Block('start')
+    ctx.add_block(starting_block)
+    return ctx
+
+def main():
+    nprocs = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    lambda_t = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+
+    context = initial_context()
+    ps = new(User, num=nprocs)
+    ctrl = new(Controller, (ps, lambda_t, context, 0.2))
+
+    for p in ps: setup(p, (ps-{p}, ctrl, context))
+    start(ps)
+    start(ctrl)
+    await(received(('done',), from_=ctrl))
