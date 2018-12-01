@@ -13,8 +13,8 @@ class Controller(process):
         self.traitors = random.sample(processes, int(self.nprocs * frac_traitors))
         # self.step is Current Step in the Agreement Procedure
         self.step = None
-        # self.round is Current Round of BA*
-        self.round_num = None
+        # self.curr_round is Current Round of BA*
+        self.curr_round = None
         self.W = None
         self.committee = None
         self.proposers = None
@@ -29,7 +29,7 @@ class Controller(process):
         if round_num in self.proposed_blocks:
             self.proposed_blocks[round_num].add(block)
         else:
-            self.proposed_blocks[round_num] = set([block])
+            self.proposed_blocks[round_num] = {block}
 
     def receive(msg=('All', round_num, step), from_= p):
         proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
@@ -62,7 +62,7 @@ class Controller(process):
             send(('InCommitteeReply', round_num, step, 0), to=p)
 
     def receive(msg=('IsUserProposer', round_num, q), from_=p):
-        if self.round_num is None or self.round_num < round_num:
+        if curr_round is None or curr_round < round_num:
             Sortition(self.num_proposers, round_num, None, 'Proposers')
         send(('IsProposerReply', round_num, int(q in self.proposers)), to=p)
 
@@ -113,12 +113,12 @@ class Controller(process):
             return self.committee
 
         elif role.lower() in 'proposers':
-            assert self.round is None or self.round == round or self.round == round - 1, \
-                '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.round,
+            assert self.curr_round is None or self.curr_round == round or self.curr_round == round - 1, \
+                '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.curr_round,
                                                                                                           round)
-            if self.round is None or self.round < round:
+            if self.curr_round is None or self.curr_round < round:
                 self.proposers = random.sample(self.ps, num_role)
-                self.round = round
+                self.curr_round = round
             return self.proposers
 
     def VerifySort(proc_id):
