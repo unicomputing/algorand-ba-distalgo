@@ -184,7 +184,7 @@ class User(process):
         (round_num, step, initiator_id, hprev, value) = msg
 
         if hprev !=  H(ctx.prev_block()):
-            return (0, None)
+            return (0, None, None)
 
         votes = BlindVerifySort(initiator_id, 'committee', round_num, step)
 
@@ -413,7 +413,6 @@ class User(process):
         @rtype: L{H(Block)}
         """
         block = Block(None, round_num, hash_last_block)
-        #TODO: Need to send to controller the empty block and the hash.
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block

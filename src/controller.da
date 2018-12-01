@@ -2,6 +2,7 @@ import random
 import numpy as np
 from block import Block
 import parameters as params
+from H import H
 
 class Controller(process):
 
@@ -140,6 +141,10 @@ class Controller(process):
         self.results[p] = (str(result[0]) if type(result[0]) is Block else result[0], result[1])
         send(('Received result',), to=p)
 
+    def isEmptyBlock(block:Block):
+        return block.get_round() == self.curr_round and block.get_value() == None and block.get_timestamp() == None \
+            and block.get_prev_hash() == H(self.context.prev_block())
+
     def run():
 
         proposerSet = random.sample(self.ps, len(self.ps)//2)
@@ -194,7 +199,7 @@ class Controller(process):
         else:
             print('1) Safety Sastisfied')
             for block in total_blocks:
-                if block in self.proposed_blocks[block.get_round()]:
+                if block in self.proposed_blocks[block.get_round()] or self.isEmptyBlock(block):
                     print('2) Agreement Satisfied\n')
                 else:
                     print('2) Agreement Violated\n')
