@@ -24,13 +24,36 @@ class User(process):
 
     def receive(msg=('Propose',)):
         block = Block(str(self), self.curr_round_num, H(self.context.prev_block()))
-        # TODO: Need to send to controller the block and the hash.
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
         Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
-        if self.highest_priority_block == None or self.highest_priority_block < (self, block):
+        if self.highest_priority_block == None or self.highest_priority_block[0] < self:
             self.highest_priority_block = (self, block)
+
+    def receive(msg=('ByzantinePropose',)):
+        block = Block(str(self), self.curr_round_num, H(self.context.prev_block()))
+        ByzantineProposal(block)
+
+    def ByzantineProposal(block: Block):
+
+        mal_1 = Block(block.get_value()+"_mal_1", block.get_round(), block.get_prev_hash(), block.get_timestamp())
+        mal_2 = Block(block.get_value()+"_mal_2", block.get_round(), block.get_prev_hash(), block.get_timestamp())
+
+        mal_1_hash = H(mal_1)
+        if mal_1_hash not in self.blockofhash:
+            self.blockofhash[mal_1_hash] = mal_1
+        mal_2_hash = H(mal_2)
+        if mal_2_hash not in self.blockofhash:
+            self.blockofhash[mal_2_hash] = mal_2
+
+        receiver_set_1 = set(random.sample(self.neighbours, len(self.neighbours)//2)).union({self.controller})
+        receiver_set_2 = (self.neighbours - receiver_set_1).union({self.controller})
+        Gossip(msg=('Proposal', self.curr_round_num, self, mal_1), to=receiver_set_1)
+        Gossip(msg=('Proposal', self.curr_round_num, self, mal_2), to=receiver_set_2)
+
+        self.highest_priority_block = (self, mal_2)
+        output('Made Byzantine Proposal, and {} has highest priority with: {}'.format(self, mal_2.get_value()))
 
     def Gossip(msg, to=None):
         """
@@ -66,7 +89,7 @@ class User(process):
             block_hash = H(block)
             if block_hash not in self.blockofhash:
                 self.blockofhash[block_hash] = block
-            if self.highest_priority_block == None or self.highest_priority_block < (ps_id, block):
+            if self.highest_priority_block == None or self.highest_priority_block[0] < ps_id:
                 self.highest_priority_block = (ps_id, block)
             send(('Proposal', round_num, ps_id, block), to=self.neighbours)
 
@@ -433,7 +456,7 @@ class User(process):
         @return: tuple containing status of consensus and the block which has been agreed upon.
         @rtype: C{str}, L{Block}
         """
-        output('Starting BA*')
+        output('Starting BA* with block {}'.format(block.get_value()))
         hblock = Reduction(context, round, H(block))
         output('Reduction Done')
         hblock_star = BinaryBA(context, round, hblock)
@@ -472,10 +495,11 @@ def initial_context():
 def main():
     nprocs = int(sys.argv[1]) if len(sys.argv) > 1 else 10
     lambda_t = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+    byzantine_mode = True
 
     context = initial_context()
     ps = new(User, num=nprocs)
-    ctrl = new(Controller, (ps, lambda_t, context, 0.2))
+    ctrl = new(Controller, (ps, lambda_t, context, 0.2, byzantine_mode))
 
     for p in ps: setup(p, (ps-{p}, ctrl, context))
     start(ps)

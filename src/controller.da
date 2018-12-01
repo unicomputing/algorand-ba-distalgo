@@ -6,12 +6,12 @@ from H import H
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, frac_traitors):
+    def setup(processes, lambda_t, context, frac_traitors, byzantine_mode):
         self.nprocs = len(processes)
         self.ps = processes
         self.lambda_t = lambda_t
         self.context = context
-        self.traitors = random.sample(processes, int(self.nprocs * frac_traitors))
+        self.traitors = set(random.sample(processes, int(self.nprocs * frac_traitors)))
         # self.step is Current Step in the Agreement Procedure
         self.step = None
         # self.curr_round is Current Round of BA*
@@ -25,6 +25,8 @@ class Controller(process):
         self.results = dict()
         self.committees_created = dict()
         self.proposed_blocks = {}
+
+        self.byzantine_mode = byzantine_mode
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
@@ -118,7 +120,7 @@ class Controller(process):
                 '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.curr_round,
                                                                                                           round)
             if self.curr_round is None or self.curr_round < round:
-                self.proposers = random.sample(self.ps, num_role)
+                self.proposers = set(random.sample(self.ps, num_role))
                 self.curr_round = round
             return self.proposers
 
@@ -147,8 +149,14 @@ class Controller(process):
 
     def run():
 
-        proposerSet = random.sample(self.ps, len(self.ps)//2)
-        send(('Propose',), to=proposerSet)
+        # proposerSet = random.sample(self.ps, self.num_proposers)
+        proposerSet = Sortition(self.num_proposers, None, None, 'Proposer')
+        if self.byzantine_mode:
+            max_prop_id = max(proposerSet)
+            send(('Propose',), to=proposerSet-{max_prop_id})
+            send(('ByzantinePropose',), to=max_prop_id)
+        else:
+            send(('Propose',), to=proposerSet)
 
         if await(False):
             pass
@@ -193,7 +201,7 @@ class Controller(process):
 
         # Correctness Testing
         print("\n Correctness Testing")
-        total_blocks = set(tentative_blocks).union(final_blocks)
+        total_blocks = set(tentative_blocks).union(set(final_blocks))
         if len(total_blocks) != 1:
             print('1) Safety Violated')
         else:
