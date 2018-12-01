@@ -15,12 +15,12 @@ def main():
                 params.tau_proposer = 3
                 params.tau_final = 5
 
-            else if i in range(11,21):
+            elif i in range(11,21):
                 params.tau_step = 9
                 params.tau_proposer = 6
                 params.tau_final = 9
 
-            else if i in range(20,43):
+            elif i in range(20,43):
                 params.tau_step = 15
                 params.tau_proposer = 10
                 params.tau_final = 16
