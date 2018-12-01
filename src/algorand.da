@@ -501,7 +501,7 @@ def main():
                         default=10)
 
     parser.add_argument('-tr', '--traitors', help='Number of traitors that algorand runs with', type=int,
-                        dest='ntraitors', default=-1)
+                        dest='ntraitors', default=0)
 
     parser.add_argument('-st', '--stake-traitors', help='Sum of fractions of stake held by all traitors', type=float,
                         dest='stake_traitors', default=0.33)
@@ -539,8 +539,8 @@ def main():
     args = vars(parser.parse_args())
 
     n_users = args['nusers']
-    n_traitors = random.randint(0, n_users) if args['ntraitors'] < 0 else args['ntraitors']
-    stake_traitors = args['stake_traitors']
+    n_traitors = args['ntraitors']
+    stake_traitors = args['stake_traitors'] if n_traitors > 0 else 0
     params.lambda_block = args['lambda_block']
     params.lambda_step = args['lambda_step']
     params.T_final = args['T_final']
@@ -550,7 +550,7 @@ def main():
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
     byzantine_proposer =  args['byzantine_proposer']
-    byzantine_committee = args['byzantine_committee']
+    byzantine_committee = args['byzantine_committee'] and (n_traitors > 0) and (stake_traitors > 0)
     context = initial_context()
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context,
