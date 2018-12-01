@@ -128,6 +128,9 @@ class Controller(process):
             and block.get_prev_hash() == H(self.context.prev_block())
 
     def distribute_stakes(num_indices: int, total_stake: float):
+        if num_indices == 0:
+            return list()
+
         stakes = list()
         for i in range(num_indices-1):
             stakes.append(np.random.uniform(0, total_stake))
