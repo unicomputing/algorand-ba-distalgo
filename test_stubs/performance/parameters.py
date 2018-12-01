@@ -8,7 +8,7 @@ T_step = 0.685
 
 tau_step = 5
 
-tau_proposer = 2
+tau_proposer = 5
 
 tau_final = 6
 

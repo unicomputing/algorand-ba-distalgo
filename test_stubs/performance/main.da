@@ -1,0 +1,22 @@
+import algorand as algo
+from controller import Controller
+import parameters as params
+
+def main():
+
+    params.lambda_block = 8
+    params.lambda_step = 10
+
+    for i in range(3,40):
+        params.tau_step = (int) (i/2)
+        params.tau_proposer = (int) (i/3)
+        params.tau_final = (int) ((2*i)/3)
+
+        context = algo.initial_context()
+        ps = new(algo.User, num=i)
+        ctrl = new(Controller, (ps, params.lambda_block, context, 0.2))
+
+        for p in ps: setup(p, (ps-{p}, ctrl, context))
+        start(ps)
+        start(ctrl)
+        await(received(('done',), from_=ctrl))
