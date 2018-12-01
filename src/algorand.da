@@ -94,60 +94,6 @@ class User(process):
                 self.highest_priority_block = (ps_id, block)
             send(('Proposal', round_num, ps_id, block), to=self.neighbours)
 
-    # def UserSortition(round_num, step, role=None):
-    #     """
-    #
-    #     Sends request to L{controller} to perform the soritition.
-    #
-    #
-    #     @param round_num: The current round of the BA.
-    #     @type round_num: C{int}
-    #     @param step: The current step of BA that is in progress.
-    #     @type step: C{int}
-    #     @param role: A string mentioning the role the user.
-    #     @type role: C(str)
-    #     @return: Number of votes that can be cast if that user is a committee member else 0.
-    #     @rtype: C(set)
-    #     """
-    #     # output('User Sortition')
-    #     assert role is None or role.lower() in 'committee' or role.lower() in 'proposer', \
-    #         'Invalid role given for Sortition'
-    #     assert round_num >= self.curr_round_num,\
-    #         'Round No. {} for which Sortition is requested is over. Curr Round No. is {}'.format(round_num,
-    #                                                                                              self.curr_round_num)
-    #     assert type(step) is str or type(self.curr_step) is str or step >= self.curr_step, \
-    #         'Step No. {} for which Sortition is requested is over. Curr Step No. is {}'.format(step, self.curr_step)
-    #
-    #     if role is None and (self.curr_round_num is None or self.curr_step is None or type(self.curr_step) is str
-    #                          or self.curr_round_num < round_num or self.curr_step < step):
-    #         send(('All', round_num, step), to=self.controller)
-    #         await(some(received(('SortitionAll', proposers, committee, _step), from_=self.controller)))
-    #         self.committee = committee
-    #         self.proposers = proposers
-    #         self.curr_round_num = round_num
-    #         self.curr_step = step
-    #
-    #     elif role.lower() in 'committee' and (type(step) is str or type(self.curr_step) is str or self.curr_step < step):
-    #         output('Requesting Committee')
-    #         send(('Committee', step), to=self.controller)
-    #         await(some(received(('SortitionCommittee', committee, _step), from_=self.controller)))
-    #         # output('Received Committee')
-    #         self.committee = committee
-    #         self.curr_step = step
-    #
-    #     elif role.lower() in 'proposers' and self.curr_round_num < round_num:
-    #         send(('Proposer', round_num), to=self.controller)
-    #         await(some(received(('SortitionProposers', proposers, _round_num), from_=self.controller)))
-    #         self.proposers = proposers
-    #         self.curr_round_num = round_num
-    #
-    #     if role.lower() in 'committee':
-    #         return self.committee[self] if self in self.committee else 0
-    #     elif role.lower() in 'proposer':
-    #         return self in self.proposers
-    #     else:
-    #         return (self in self.proposers, self.committee[self] if self in self.committee else 0)
-
     def receive(msg=('InCommitteeReply', round_num, step, votes)):
         self.CommitteeMemberCheck = votes
 
@@ -155,6 +101,18 @@ class User(process):
         self.ProposerCheck = retval
 
     def BlindSortition(round_num, step, role=None):
+        """
+        Sends request to L{controller} to perform the soritition.
+
+        @param round_num: The current round of the BA.
+        @type round_num: C{int}
+        @param step: The current step of BA that is in progress.
+        @type step: C{int}
+        @param role: A string mentioning the role the user.
+        @type role: C(str)
+        @return: Number of votes that can be cast if that user is a committee member else 0.
+        @rtype: C(int)
+        """
         assert role is None or role.lower() in 'proposers' or role.lower() in 'committee', \
             'Unknown role {}'.format(role)
         if role is None:
@@ -189,14 +147,6 @@ class User(process):
             send(('IsUserProposer', round_num, proc_id), to=self.controller)
             await(self.ProposerCheck >= 0)
             return self.ProposerCheck
-
-    # def UserVerifySort(proc_id, role):
-    #     if role.lower() in 'committee':
-    #         if proc_id in self.committee:
-    #             return self.committee[proc_id]
-    #         return 0
-    #     elif role.lower() in 'proposers':
-    #         return int(self in self.proposers)
 
     def ProcessMsg(ctx, msg):
         """
