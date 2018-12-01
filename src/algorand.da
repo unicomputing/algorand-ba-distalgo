@@ -29,7 +29,7 @@ class User(process):
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
         Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
-        if self.highest_priority_block == None or self.highest_priority_block[0] < self:
+        if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
             self.highest_priority_block = (self, block)
 
     def receive(msg=('ByzantinePropose',)):
@@ -50,6 +50,7 @@ class User(process):
 
         receiver_set_1 = set(random.sample(self.neighbours, len(self.neighbours)//2)).union({self.controller})
         receiver_set_2 = (self.neighbours - receiver_set_1).union({self.controller})
+        print(receiver_set_1, receiver_set_2, ' receviers')
         Gossip(msg=('Proposal', self.curr_round_num, self, mal_1), to=receiver_set_1)
         Gossip(msg=('Proposal', self.curr_round_num, self, mal_2), to=receiver_set_2)
 
@@ -90,8 +91,11 @@ class User(process):
             block_hash = H(block)
             if block_hash not in self.blockofhash:
                 self.blockofhash[block_hash] = block
-            if self.highest_priority_block == None or self.highest_priority_block[0] < ps_id:
+            if self.highest_priority_block[0] is None or self.highest_priority_block[0] < ps_id:
                 self.highest_priority_block = (ps_id, block)
+            elif self.highest_priority_block[0] is not None and self.highest_priority_block[0] == ps_id \
+                    and block != self.highest_priority_block[1] and ps_id != self:
+                self.highest_priority_block = (ps_id, Block(None, self.curr_round_num, H(self.context.prev_block())))
             send(('Proposal', round_num, ps_id, block), to=self.neighbours)
 
     def receive(msg=('InCommitteeReply', round_num, step, votes)):
@@ -222,8 +226,6 @@ class User(process):
                          (('CommitteeGossip', _round_num, _step, ps_id, h_last_block, value), _) in received,
                          (round_num, step, ps_id, h_last_block, value) not in prev_msgs)
             prev_msgs = prev_msgs.union(msgs)
-            # if msgs:
-            #     output('[CountVotes] msgs = {}'.format(msgs))
             for m in msgs:
                 votes, cmember_id, value = ProcessMsg(context, m)
                 if cmember_id in voters or votes == 0:
@@ -235,16 +237,11 @@ class User(process):
                     counts[value] = votes
 
                 if counts[value] > T_value * tau_value:
-                    # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
-                    #              (('CommitteeGossip', _round_num, _step, c, d, e), _) in received)
-                    # output('[CountVotes] At step {} temp = {}'.format(step, temp))
                     output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]))
                     return value
             if time.time() > start + lambda_value:
-                # temp = setof(('CommitteeGossip', round_num, step, c, d, e),
-                #              (('CommitteeGossip', _round_num, _step, c, d, e), _) in received)
-                # output('[CountVotes] At step {} temp = {}'.format(step, temp))
-                output('CountVotes at step {} Reached TIMEOUT'.format(step))
+                output('CountVotes at step {} Reached TIMEOUT {}'.format(step, counts))
+
                 return "TIMEOUT"
 
 
@@ -267,49 +264,49 @@ class User(process):
 
         step = 1
         r = block_hash
-        empty_hash = getEmptyBlockHash(round, block_hash)
+        empty_hash = getEmptyBlockHash(round, H(context.prev_block()))
 
         while step < params.max_steps:
             CommitteeVote(context, round, step, r)
             r = CountVotes(context, round, step, params.T_step, params.tau_step,
                            params.lambda_step)
 
-            if r=="TIMEOUT":
+            if r == "TIMEOUT":
                 r = block_hash
-            elif r!=empty_hash:
+            elif r != empty_hash:
                 for t in range(step+1,step+4):
                     CommitteeVote(context, round, t, r)
 
-                if step==1 :
+                if step == 1 :
                     CommitteeVote(context, round, "FINAL", r)
 
                 return r
 
-            step=step+1
+            step = step+1
 
             CommitteeVote(context, round, step, r)
-            r = CountVotes(context, round, step, params.T_step, params.tau_step, params,lambda_step)
+            r = CountVotes(context, round, step, params.T_step, params.tau_step, params.lambda_step)
 
-            if r=="TIMEOUT":
-                r=empty_hash
-            elif r==empty_hash:
+            if r == "TIMEOUT":
+                r = empty_hash
+            elif r == empty_hash:
                 for t in range(step+1, step+4):
                     CommitteeVote(context, round, t, r)
                 return r
 
-            step=step+1
+            step = step+1
 
             CommitteeVote(context, round, step, r)
             r=CountVotes(context, round, step, params.T_step, params.tau_step, params.lambda_step)
             if r=="TIMEOUT":
                 if CommonCoin()==0:
                     output('[BinaryBA*] CommonCoin returned 0, so using block_hash')
-                    r=block_hash
+                    r = block_hash
                 else:
                     output('[BinaryBA*] CommonCoin returned 1, so using empty_hash')
-                    r=empty_hash
+                    r = empty_hash
 
-            step=step+1
+            step = step+1
 
         output('Binary BA*')
 
@@ -419,6 +416,7 @@ class User(process):
             return "TENTATIVE", BlockOfHash(hblock_star)
 
     def run():
+        self.highest_priority_block = (None, Block(None, self.curr_round_num, H(self.context.prev_block())))
         await(received(('start_BA',), from_=self.controller))
         result = BA(self.context, 0, self.highest_priority_block[1])
         output('Completed BA*')
