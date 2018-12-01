@@ -1,0 +1,219 @@
+import random
+import numpy as np
+from block import Block
+import parameters as params
+import time
+from itertools import chain
+import json
+
+class ResourceUsageData:
+
+    """Tracks process time only."""
+
+    def start(self):
+        self.start_cputime = time.process_time()
+
+    def end(self):
+        self.end_cputime = time.process_time()
+
+        self.results = {
+            'Total_process_time': self.end_cputime - self.start_cputime,
+        }
+
+    @classmethod
+    def aggregate(cls, rudata_points):
+        return {
+            'Total_process_time': sum(p.results['Total_process_time']
+                                      for p in rudata_points),
+            'Total_processes': len(rudata_points),
+        }
+
+class Controller(process):
+
+    def setup(processes, lambda_t, context, frac_traitors):
+        self.nprocs = len(processes)
+        self.ps = processes
+        self.lambda_t = lambda_t
+        self.context = context
+        self.traitors = random.sample(processes, int(self.nprocs * frac_traitors))
+        # self.step is Current Step in the Agreement Procedure
+        self.step = None
+        # self.round is Current Round of BA*
+        self.round_num = None
+        self.W = None
+        self.committee = None
+        self.proposers = None
+        self.num_committee = params.tau_step
+        self.num_proposers = params.tau_proposer
+        self.num_final_committee = params.tau_final
+        self.results = dict()
+        self.committees_created = dict()
+        self.rudata_points = {}
+
+    def receive(msg=('All', round_num, step), from_= p):
+        proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
+        committee = Sortition(self.num_committee, round_num, step, 'Committee')
+        send(('SortitionAll', proposers, committee, step), to= p)
+
+    def receive(msg=('Committee', step), from_= p):
+        if step in self.committees_created:
+            committee = self.committees_created[step]
+        elif step == 'FINAL':
+            committee = Sortition(self.num_final_committee, None, step, 'Committee')
+        else:
+            committee = Sortition(self.num_committee, None, step, 'Committee')
+        self.committees_created[step] = committee
+        send(('SortitionCommittee', committee, step), to= p)
+
+    def receive(msg=('Proposer', round_num), from_= p):
+        proposers = Sortition(self.num_proposers, round_num, None, 'Committee')
+        send(('SortitionProposers', proposers, round_num), to= p)
+
+    def Sortition(num_role, round, step, role):
+        """
+
+        This function is a reinterpretation of the Algorand Sortition algorithm. Instead of relying upon a VRF 
+        to allow users to know whether they are committee members, proposers, or just replicas, at each step/round, we
+        generate a list of members for each role the first time this function is called at each step/round.
+        Committee Members are chosen according to a set of weights generated randomly each step. The committee
+        members can cast multiple votes, and hence, are chosen using a Normal random process. 
+        Proposers are sampled randomly from the set of nodes in self.ps.
+
+        @param num_role: Number of processes needed by calling function for given role
+        @type num_role: int
+        @param round: Round number for performing proposer selection. No effect on committee selection
+        @type round: int
+        @param step: Step number for performing committee selection.
+            No effect on proposer selection
+        @type step: int
+        @param role: Role for which users are being chosen: Proposer or Committee.
+            No other roles are accepted.
+        @type role: str
+        @return: List consisting of all node names
+            assigned to "role"
+        """
+        assert role.lower() in 'committee' or role.lower() in 'proposers',\
+            '[controller.da] Unrecognized role name given to Sortition'
+        if role.lower() in 'committee':
+            assert self.step is None or type(step) is str or type(self.step) is str or self.step == step or self.step == step - 1, \
+                '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
+            if self.step is None or self.step != step or self.step < step:
+                output('Committee Sortition Requirements Satisfied')
+                if nprocs <= 10:
+                    scale = 0.5
+                elif nprocs <= 50:
+                    scale = 1.0
+                else:
+                    scale = 1.5
+                self.W = np.histogram(np.random.normal(loc=nprocs / 2, scale=scale * nprocs / 10,
+                                                       size=num_role).round().astype(np.int32),
+                                      bins=nprocs)[0]
+                self.committee = dict([(proc_id, self.W[i]) for proc_id, i in zip(list(self.ps),range(nprocs))
+                                       if self.W[i]])
+                self.step = step
+                output('Finished Committee Sortition - STEP: {}'.format(step))
+                output('Committee at STEP {} = {}'.format(step, self.committee))
+            return self.committee
+
+        elif role.lower() in 'proposer':
+            assert self.round is None or self.round == round or self.round == round - 1, \
+                '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.round,
+                                                                                                          round)
+            if self.round is None or self.round < round:
+                self.proposers = random.sample(self.ps, num_role)
+                self.round = round
+            return self.proposers
+
+    def VerifySort(proc_id):
+        """
+
+        This function is a reinterpretation of the Algorand VerifySort algorithm. Instead of relying upon a VRF
+        to independently allow users to know how many votes a committee member is allowed to cast, we allow them to
+        query the controller for this information.
+
+        @param proc_id: The node ID which is being verified.
+        @return: Number of votes assigned to proc_id.
+
+        """
+        if self.committee and proc_id in self.committee:
+            return self.committee[proc_id]
+        return 0
+
+    def receive(msg= ('result', result), from_=p):
+        self.results[p] = (str(result[0]) if type(result[0]) is Block else result[0],
+                           str(result[1]) if type(result[1]) is Block else result[1])
+        send(('Received result',), to=p)
+
+    def receive(msg= ('done' , rudata, ruid), from_=p):
+        rugroup_id = str(ruid)
+        rudata_points.setdefault(rugroup_id, []).append(rudata)
+
+    def rugroup(id):
+        def f(proc):
+            proc.ctl_rugroup_id = id
+            return proc
+        return f
+
+    def run():
+
+        t1 = time.perf_counter()
+        process_t1 = time.process_time()
+        proposerSet = random.sample(self.ps, len(self.ps)//2)
+        send(('Propose',), to=proposerSet)
+
+        if await(False):
+            pass
+        elif timeout(lambda_t):
+            pass
+
+        send(('start_BA', ) , to=ps)
+
+        await(each(p in ps, has=received(('done',), from_=p)))
+        process_t2 = time.process_time()
+        t2 = time.perf_counter()
+        output('Results:')
+        tentative_blocks = set(block for status, block in self.results.values() if status == 'TENTATIVE')
+        final_blocks = set(block for status, block in self.results.values() if status == 'FINAL')
+        tentative_users = dict()
+        final_users = dict()
+        for user, (status, block) in self.results.items():
+            if status == 'TENTATIVE':
+                if block in tentative_users:
+                    tentative_users[block].append(user)
+                else:
+                    tentative_users[block] = [user]
+            else:
+                if block in final_users:
+                    final_users[block].append(user)
+                else:
+                    final_users[block] = [user]
+
+        if len(tentative_blocks) == 0 and len(final_blocks) == 1:
+            output('Consensus Reached')
+            for x in final_blocks:
+                print('Final Block:\n{}'.format(x))
+        else:
+            output('Failed to reach consensus')
+            print('Tentative Blocks:')
+            for block in tentative_blocks:
+                print('List of users with this block: {}'.format(tentative_users[block]))
+                print(block)
+            print('Final Blocks:')
+            for block in final_blocks:
+                print('List of users with this block: {}'.format(final_users[block]))
+                print(block)
+
+        jsondata = {}
+        for rugroup_id, points in rudata_points.items():
+            if rugroup_id is None:
+                continue
+            jsondata[rugroup_id] = ResourceUsageData.aggregate(points)
+        allpoints = list(chain(*rudata_points.values()))
+        jsondata['ProcessTime'] = process_t2 - process_t1
+        jsondata['All'] = ResourceUsageData.aggregate(allpoints)
+        jsondata['Wallclock_time'] = t2 - t1
+        jsonoutput = json.dumps(jsondata)
+        print("###OUTPUT: " + jsonoutput)
+        send(('done',), to=parent())
+
+

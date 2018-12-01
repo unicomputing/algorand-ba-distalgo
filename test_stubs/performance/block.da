@@ -1,0 +1,45 @@
+# https://people.csail.mit.edu/nickolai/papers/gilad-algorand-eprint.pdf
+# The Block metadata is Implemented as per section 8.1 in the paper.
+import datetime
+from prettytable import PrettyTable
+
+class Block(object):
+    def __init__(self, x, round_num=None, prev_hash=None, timestamp=None):
+        self.__val = x
+        self.__prev_hash = prev_hash
+        self.__round = round_num
+        self.__timestamp = str(datetime.datetime.now()) if timestamp is None and x is not None else timestamp
+
+    def get_value(self):
+        return self.__val
+
+    def get_round(self):
+        return self.__round
+
+    def set_prev_hash(self, hash):
+        self.__prev_hash = hash
+
+    def get_prev_hash(self):
+        return self.__prev_hash
+
+    def get_timestamp(self):
+        return self.__timestamp
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        elif type(self) != type(other):
+            return False
+        else:
+            return (self.__val == other.get_value() and self.__round == other.get_round()
+                    and self.__prev_hash == other.get_prev_hash() and self.__timestamp == other.get_timestamp())
+
+    def __str__(self):
+
+        table = PrettyTable(field_names=['Value', 'PreviousHash', 'Round', 'Timestamp'])
+        table.title = 'Block {}'.format(self.__round)
+        table.add_row([self.__val, self.__prev_hash[:7], self.__round, self.__timestamp])
+
+        return str(table)
+        # return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\
+        #     format(self.__val, self.__prev_hash[:7], self.__round, self.__timestamp)
