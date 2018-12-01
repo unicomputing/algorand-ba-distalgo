@@ -2,10 +2,10 @@ from controller import Controller
 from context import Context
 from block import Block
 from H import H
-import sys
 import time
-from parameters import *
+import parameters as params
 import random
+import argparse
 
 class User(process):
     def setup(neighbours, ctrl, context):
@@ -313,16 +313,15 @@ class User(process):
         @return: Returns the hash of the block that has been chosen.
         @rtype: L{H(Block)}
         """
-        # TODO: need to Implement Binary BA block.
 
         step = 1
         r = block_hash
         empty_hash = getEmptyBlockHash(round, block_hash)
 
-        while step < max_steps:
+        while step < params.max_steps:
             CommitteeVote(context, round, step, r)
-            r = CountVotes(context, round, step, T_step, tau_step,
-                             lambda_step)
+            r = CountVotes(context, round, step, params.T_step, params.tau_step,
+                           params.lambda_step)
 
             if r=="TIMEOUT":
                 r = block_hash
@@ -338,7 +337,7 @@ class User(process):
             step=step+1
 
             CommitteeVote(context, round, step, r)
-            r = CountVotes(context, round, step, T_step, tau_step, lambda_step)
+            r = CountVotes(context, round, step, params.T_step, params.tau_step, params,lambda_step)
 
             if r=="TIMEOUT":
                 r=empty_hash
@@ -350,7 +349,7 @@ class User(process):
             step=step+1
 
             CommitteeVote(context, round, step, r)
-            r=CountVotes(context, round, step, T_step, tau_step, lambda_step)
+            r=CountVotes(context, round, step, params.T_step, params.tau_step, params.lambda_step)
             if r=="TIMEOUT":
                 if CommonCoin()==0:
                     output('[BinaryBA*] CommonCoin returned 0, so using block_hash')
@@ -386,8 +385,8 @@ class User(process):
         output('Reduction')
         CommitteeVote(context, round, "REDUCTION_ONE", hblock)
         output('After CommitteeVote REDUCTION_ONE')
-        hblock1 = CountVotes(context, round, "REDUCTION_ONE", T_step, tau_step,
-                             lambda_block + lambda_step)
+        hblock1 = CountVotes(context, round, "REDUCTION_ONE", params.T_step, params.tau_step,
+                             params.lambda_block + params.lambda_step)
         output('After CountVotes for REDUCTION_ONE')
         empty_hash = getEmptyBlockHash(round, H(context.prev_block()))
         if hblock1 == "TIMEOUT":
@@ -395,7 +394,7 @@ class User(process):
         else:
             CommitteeVote(context, round, "REDUCTION_TWO", hblock1)
         output('After CommitteeVote REDUCTION_TWO')
-        hblock2 = CountVotes(context, round, "REDUCTION_TWO", T_step, tau_step, lambda_step)
+        hblock2 = CountVotes(context, round, "REDUCTION_TWO", params.T_step, params.tau_step, params.lambda_step)
         output('After CountVotes for REDUCTION_TWO')
         if hblock2 == "TIMEOUT":
             return empty_hash
@@ -461,7 +460,7 @@ class User(process):
         output('Reduction Done')
         hblock_star = BinaryBA(context, round, hblock)
         output('BinaryBA* Done')
-        r = CountVotes(context, round, "FINAL", T_final, tau_final, lambda_step)
+        r = CountVotes(context, round, "FINAL", params.T_final, params.tau_final, params.lambda_step)
         output('After CountVotes for FINAL')
         if hblock_star == r:
             return "FINAL", BlockOfHash(hblock_star)
@@ -493,13 +492,55 @@ def initial_context():
     return ctx
 
 def main():
-    nprocs = int(sys.argv[1]) if len(sys.argv) > 1 else 10
-    lambda_t = int(sys.argv[2]) if len(sys.argv) > 2 else 2
-    byzantine_mode = True
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-u', '--users', help='Number of users the algorand runs with', type=int, dest='nusers',
+                        default=10)
+    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=int, dest='lambda_block',
+                        default=params.lambda_block)
 
+    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA⋆ step', type=int, dest='lambda_step',
+                        default=params.lambda_step)
+
+    parser.add_argument('-Tf', '--t_final', help='threshold of tau final for BA*', type=float, dest='T_final',
+                        default=params.T_final)
+
+    parser.add_argument('-Ts', '--t_step', help='Threshold of tau step for BA*', type=float, dest='T_step',
+                        default=params.T_step)
+
+    parser.add_argument('-ts', '--tau_step', help='Expected # of committee members', type=int, dest='tau_step',
+                        default=params.tau_step)
+
+    parser.add_argument('-tp', '--tau_proposer', help='expected # of block proposers', type=int, dest='tau_proposer',
+                        default=params.tau_proposer)
+
+    parser.add_argument('-tf', '--tau_final', help='expected # of final committee members', type=int, dest='tau_final',
+                        default=params.tau_final)
+
+    parser.add_argument('-ms', '--max_steps', help='maximum number of steps in BinaryBA*', type=int, dest='max_steps',
+                        default=params.max_steps)
+
+    parser.add_argument('-bp', '--byzantine_proposer', help='', dest='byzantine_proposer',
+                        action='store_true', default=False)
+
+    parser.add_argument('-bc', '--byzantine_committee', help='', dest='byzantine_committee',
+                        action='store_true', default=False)
+
+    args = vars(parser.parse_args())
+
+    n_users = args['nusers']
+    params.lambda_block = args['lambda_block']
+    params.lambda_step = args['lambda_step']
+    params.T_final = args['T_final']
+    params.T_step = args['T_step']
+    params.tau_step = args['tau_step']
+    params.tau_proposer = args['tau_proposer']
+    params.tau_final = args['tau_final']
+    params.max_steps = args['max_steps']
+    byzantine_proposer =  args['byzantine_proposer']
+    byzantine_committee = args['byzantine_committee']
     context = initial_context()
-    ps = new(User, num=nprocs)
-    ctrl = new(Controller, (ps, lambda_t, context, 0.2, byzantine_mode))
+    ps = new(User, num=n_users)
+    ctrl = new(Controller, (ps, params.lambda_block, context, 0.2, byzantine_proposer))
 
     for p in ps: setup(p, (ps-{p}, ctrl, context))
     start(ps)
