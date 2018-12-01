@@ -6,17 +6,17 @@ from H import H
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, frac_traitors, byzantine_mode):
+    def setup(processes, lambda_t, context, n_traitors, stake_traitors, byzantine_proposer, byzantine_committee):
         self.nprocs = len(processes)
         self.ps = processes
+        self.ps_list = list(processes)
         self.lambda_t = lambda_t
         self.context = context
-        self.traitors = set(random.sample(processes, int(self.nprocs * frac_traitors)))
-        # self.step is Current Step in the Agreement Procedure
+        self.n_traitors = n_traitors
+        self.stake_traitors = stake_traitors
         self.step = None
-        # self.curr_round is Current Round of BA*
         self.curr_round = None
-        self.W = None
+        self.W = dict()
         self.committee = None
         self.proposers = None
         self.num_committee = params.tau_step
@@ -26,7 +26,14 @@ class Controller(process):
         self.committees_created = dict()
         self.proposed_blocks = {}
 
-        self.byzantine_mode = byzantine_mode
+        tr = np.random.choice(np.arange(0, self.nprocs), size=n_traitors, replace=False)
+        self.traitors = {self.ps_list[i] for i in tr}
+        self.honest_users = self.ps - self.traitors
+        output('Honest: {}'.format(self.honest_users))
+        output('Traitors: {}'.format(self.traitors))
+
+        self.byzantine_proposer = byzantine_proposer
+        self.byzantine_committee = byzantine_committee
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
@@ -36,9 +43,9 @@ class Controller(process):
 
     def receive(msg=('IsUserInCommittee', round_num, step, q), from_=p):
         if step == 'FINAL':
-            self.committees_created[step] = Sortition(self.num_final_committee, None, step, 'Committee')
+            self.committees_created[step] = Sortition(self.num_final_committee, round_num, step, 'Committee')
         elif step not in self.committees_created:
-            self.committees_created[step] = Sortition(self.num_committee, None, step, 'Committee')
+            self.committees_created[step] = Sortition(self.num_committee, round_num, step, 'Committee')
 
         if q in self.committees_created[step]:
             send(('InCommitteeReply', round_num, step, self.committees_created[step][q]), to=p)
@@ -80,17 +87,8 @@ class Controller(process):
                 '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
             if self.step is None or self.step != step or self.step < step:
                 output('Committee Sortition Requirements Satisfied')
-                if nprocs <= 10:
-                    scale = 0.5
-                elif nprocs <= 50:
-                    scale = 1.0
-                else:
-                    scale = 1.5
-                self.W = np.histogram(np.random.normal(loc=nprocs / 2, scale=scale * nprocs / 10,
-                                                       size=num_role).round().astype(np.int32),
-                                      bins=nprocs)[0]
-                self.committee = dict([(proc_id, self.W[i]) for proc_id, i in zip(list(self.ps),range(nprocs))
-                                       if self.W[i]])
+                selection = list(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=True, p=self.W[round]))
+                self.committee = {self.ps_list[i]:selection.count(i) for i in set(selection)}
                 self.step = step
                 output('Finished Committee Sortition - STEP: {}'.format(step))
                 output('Committee at STEP {} = {}'.format(step, self.committee))
@@ -101,7 +99,8 @@ class Controller(process):
                 '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.curr_round,
                                                                                                           round)
             if self.curr_round is None or self.curr_round < round:
-                self.proposers = set(random.sample(self.ps, num_role))
+                p = list(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=False))
+                self.proposers = {self.ps_list[i] for i in p}
                 self.curr_round = round
             return self.proposers
 
@@ -128,16 +127,33 @@ class Controller(process):
         return block.get_round() == self.curr_round and block.get_value() == None and block.get_timestamp() == None \
             and block.get_prev_hash() == H(self.context.prev_block())
 
+    def distribute_stakes(num_indices: int, total_stake: float):
+        stakes = list()
+        for i in range(num_indices-1):
+            stakes.append(np.random.uniform(0, total_stake))
+            total_stake -= stakes[-1]
+        stakes.append(total_stake)
+        return stakes
+
+    def initialize_stakes(round_num):
+        if round_num not in self.W:
+            honest_stakes = distribute_stakes(self.nprocs - self.n_traitors, 1 - self.stake_traitors)
+            traitor_stakes = distribute_stakes(self.n_traitors, self.stake_traitors)
+
+            self.W[round_num] = honest_stakes + traitor_stakes
+            output('Stakes: {}'.format({self.ps_list[i]:self.W[round_num][i] for i in range(0, self.nprocs)}))
+        return self.W[round_num]
+
     def run():
 
-        # proposerSet = random.sample(self.ps, self.num_proposers)
-        proposerSet = Sortition(self.num_proposers, None, None, 'Proposer')
-        if self.byzantine_mode:
+        initialize_stakes(0)
+        proposerSet = Sortition(self.num_proposers, 0, None, 'Proposer')
+        if self.byzantine_proposer:
             max_prop_id = max(proposerSet)
-            send(('Propose',), to=proposerSet-{max_prop_id})
-            send(('ByzantinePropose',), to=max_prop_id)
+            send(('Propose', self.curr_round), to=proposerSet-{max_prop_id})
+            send(('ByzantinePropose', self.curr_round), to=max_prop_id)
         else:
-            send(('Propose',), to=proposerSet)
+            send(('Propose', self.curr_round), to=proposerSet)
 
         if await(False):
             pass
