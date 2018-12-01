@@ -7,6 +7,7 @@ import parameters as params
 import random
 import argparse
 import math
+from queue import Queue
 
 class User(process):
     def setup(neighbours, ctrl, context):
@@ -19,7 +20,7 @@ class User(process):
         self.proposers = None
         self.blockofhash = {}
         self.highest_priority_block = None
-
+        self.vote_queue = Queue()
         self.CommitteeMemberCheck = -1
         self.ProposerCheck = -1
 
@@ -93,6 +94,7 @@ class User(process):
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
         # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
+        self.vote_queue.put((round_num, step, ps_id, h_last_block, value))
         if not sent(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
             # output('Forwarding CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
             send(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
@@ -237,14 +239,15 @@ class User(process):
         start = time.time()
         counts = dict()
         voters = set()
-        prev_msgs = set()
+        # prev_msgs = set()
         while True:
             -- CommitteeGossipYieldPoint
-            msgs = setof((round_num, step, ps_id, h_last_block, value),
-                         (('CommitteeGossip', _round_num, _step, ps_id, h_last_block, value), _) in received,
-                         (round_num, step, ps_id, h_last_block, value) not in prev_msgs)
-            prev_msgs = prev_msgs.union(msgs)
-            for m in msgs:
+            # msgs = setof((round_num, step, ps_id, h_last_block, value),
+            #              (('CommitteeGossip', _round_num, _step, ps_id, h_last_block, value), _) in received,
+            #              (round_num, step, ps_id, h_last_block, value) not in prev_msgs)
+            # prev_msgs = prev_msgs.union(msgs)
+            while not self.vote_queue.empty():
+                m = self.vote_queue.get()
                 votes, cmember_id, value = ProcessMsg(context, m)
                 if cmember_id in voters or votes == 0:
                     continue
