@@ -226,7 +226,7 @@ class Controller(process):
         #print("###OUTPUT: " + jsonoutput)
         with open(r'results.csv', 'a') as f:
             writer = csv.writer(f, lineterminator='\n')
-            writer.writerow([len(processes), t2 - t1)
+            writer.writerow([len(processes), t2 - t1])
         send(('done',), to=parent())
 
 
