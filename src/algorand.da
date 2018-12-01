@@ -6,6 +6,7 @@ import time
 import parameters as params
 import random
 import argparse
+import math
 
 class User(process):
     def setup(neighbours, ctrl, context):
@@ -491,6 +492,11 @@ def initial_context():
     ctx.add_block(starting_block)
     return ctx
 
+def find_smallest_coprime(n):
+    for i in range(2, n):
+        if math.gcd(i, n) == 1:
+            return i
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--users', help='Number of users the algorand runs with', type=int, dest='nusers',
@@ -542,7 +548,18 @@ def main():
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context, 0.2, byzantine_proposer))
 
-    for p in ps: setup(p, (ps-{p}, ctrl, context))
+    n_search = find_smallest_coprime(n_users)
+    users_list = list(ps)
+
+    for p in ps:
+        x = users_list.index(p)
+        num_neighbours = random.randint(2, n_users)
+        neighbours_set = set()
+        for i in range(num_neighbours):
+            neighbours_set.add(users_list[x])
+            x = (x + n_search) % n_users
+        output('Neighbours of {} = {}'.format(p, neighbours_set))
+        setup(p, (neighbours_set, ctrl, context))
     start(ps)
     start(ctrl)
     await(received(('done',), from_=ctrl))
