@@ -23,20 +23,32 @@ class User(process):
         self.CommitteeMemberCheck = -1
         self.ProposerCheck = -1
 
+        self.IAmTraitor = False
+
+    def receive(msg=('YouAreTraitor',)):
+        self.IAmTraitor = True
+        output('I am a Traitor')
+
     def receive(msg=('Propose', round_num)):
         block = Block(str(self), round_num, H(self.context.prev_block()))
         self.curr_round_num = round_num
+        if self.IAmTraitor:
+            ByzantineProposal(block)
+        else:
+            Proposal(block)
+
+    def receive(msg=('ByzantinePropose', round_num)):
+        block = Block(str(self), round_num, H(self.context.prev_block()))
+        self.curr_round_num = round_num
+        ByzantineProposal(block)
+
+    def Proposal(block: Block):
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
         Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
         if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
             self.highest_priority_block = (self, block)
-
-    def receive(msg=('ByzantinePropose', round_num)):
-        block = Block(str(self), round_num, H(self.context.prev_block()))
-        self.curr_round_num = round_num
-        ByzantineProposal(block)
 
     def ByzantineProposal(block: Block):
 
@@ -52,12 +64,11 @@ class User(process):
 
         receiver_set_1 = set(random.sample(self.neighbours, len(self.neighbours)//2)).union({self.controller})
         receiver_set_2 = (self.neighbours - receiver_set_1).union({self.controller})
-        print(receiver_set_1, receiver_set_2, ' receviers')
         Gossip(msg=('Proposal', self.curr_round_num, self, mal_1), to=receiver_set_1)
         Gossip(msg=('Proposal', self.curr_round_num, self, mal_2), to=receiver_set_2)
 
-        self.highest_priority_block = (self, mal_2)
-        output('Made Byzantine Proposal, and {} has highest priority with: {}'.format(self, mal_2.get_value()))
+        if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
+            self.highest_priority_block = (self, mal_2)
 
     def Gossip(msg, to=None):
         """
@@ -193,7 +204,10 @@ class User(process):
         """
         votes = BlindSortition(round, step, role="committee")
         if votes > 0:
-            output('I am a Committee Member at step {} with {} votes'.format(step, votes))
+            if self.IAmTraitor:
+                output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
+            else:
+                output('I am a Committee Member at step {} with {} votes'.format(step, votes))
             Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):

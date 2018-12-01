@@ -99,7 +99,7 @@ class Controller(process):
                 '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.curr_round,
                                                                                                           round)
             if self.curr_round is None or self.curr_round < round:
-                p = list(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=False))
+                p = set(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=True, p=self.W[round]))
                 self.proposers = {self.ps_list[i] for i in p}
                 self.curr_round = round
             return self.proposers
@@ -147,6 +147,7 @@ class Controller(process):
     def run():
 
         initialize_stakes(0)
+        send(('YouAreTraitor',), to=self.traitors)
         proposerSet = Sortition(self.num_proposers, 0, None, 'Proposer')
         if self.byzantine_proposer:
             max_prop_id = max(proposerSet)
