@@ -25,30 +25,30 @@ class Controller(process):
         self.committees_created = dict()
         self.proposed_blocks = {}
 
-    def receive(msg=('Proposal', round_num, block)):
+    def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
             self.proposed_blocks[round_num].add(block)
         else:
             self.proposed_blocks[round_num] = {block}
 
-    def receive(msg=('All', round_num, step), from_= p):
-        proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
-        committee = Sortition(self.num_committee, round_num, step, 'Committee')
-        send(('SortitionAll', proposers, committee, step), to= p)
-
-    def receive(msg=('Committee', step), from_= p):
-        if step in self.committees_created:
-            committee = self.committees_created[step]
-        elif step == 'FINAL':
-            committee = Sortition(self.num_final_committee, None, step, 'Committee')
-        else:
-            committee = Sortition(self.num_committee, None, step, 'Committee')
-        self.committees_created[step] = committee
-        send(('SortitionCommittee', committee, step), to= p)
-
-    def receive(msg=('Proposer', round_num), from_= p):
-        proposers = Sortition(self.num_proposers, round_num, None, 'Committee')
-        send(('SortitionProposers', proposers, round_num), to= p)
+    # def receive(msg=('All', round_num, step), from_= p):
+    #     proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
+    #     committee = Sortition(self.num_committee, round_num, step, 'Committee')
+    #     send(('SortitionAll', proposers, committee, step), to= p)
+    #
+    # def receive(msg=('Committee', step), from_= p):
+    #     if step in self.committees_created:
+    #         committee = self.committees_created[step]
+    #     elif step == 'FINAL':
+    #         committee = Sortition(self.num_final_committee, None, step, 'Committee')
+    #     else:
+    #         committee = Sortition(self.num_committee, None, step, 'Committee')
+    #     self.committees_created[step] = committee
+    #     send(('SortitionCommittee', committee, step), to= p)
+    #
+    # def receive(msg=('Proposer', round_num), from_= p):
+    #     proposers = Sortition(self.num_proposers, round_num, None, 'Committee')
+    #     send(('SortitionProposers', proposers, round_num), to= p)
 
     def receive(msg=('IsUserInCommittee', round_num, step, q), from_=p):
         if step == 'FINAL':

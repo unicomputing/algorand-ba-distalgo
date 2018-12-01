@@ -6,10 +6,10 @@ T_final = 0.74
 
 T_step = 0.685
 
-tau_step = 10
+tau_step = 5
 
-tau_proposer = 5
+tau_proposer = 2
 
-tau_final = 15
+tau_final = 6
 
 max_steps = 50
