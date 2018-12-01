@@ -1,6 +1,6 @@
-lambda_block = 1
+lambda_block = 4
 
-lambda_step = 1
+lambda_step = 4
 
 T_final = 0.74
 

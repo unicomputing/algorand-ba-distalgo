@@ -23,6 +23,13 @@ class Controller(process):
         self.num_final_committee = params.tau_final
         self.results = dict()
         self.committees_created = dict()
+        self.proposed_blocks = {}
+
+    def receive(msg=('Proposal', round_num, block)):
+        if round_num in self.proposed_blocks:
+            self.proposed_blocks[round_num].add(block)
+        else:
+            self.proposed_blocks[round_num] = set([block])
 
     def receive(msg=('All', round_num, step), from_= p):
         proposers = Sortition(self.num_proposers, round_num, step, 'Proposer')
@@ -130,8 +137,7 @@ class Controller(process):
         return 0
 
     def receive(msg= ('result', result), from_=p):
-        self.results[p] = (str(result[0]) if type(result[0]) is Block else result[0],
-                           str(result[1]) if type(result[1]) is Block else result[1])
+        self.results[p] = (str(result[0]) if type(result[0]) is Block else result[0], result[1])
         send(('Received result',), to=p)
 
     def run():
@@ -180,5 +186,17 @@ class Controller(process):
                 print('List of users with this block: {}'.format(final_users[block]))
                 print(block)
 
+        # Correctness Testing
+        print("\n Correctness Testing")
+        total_blocks = set(tentative_blocks).union(final_blocks)
+        if len(total_blocks) != 1:
+            print('1) Safety Violated')
+        else:
+            print('1) Safety Sastisfied')
+            for block in total_blocks:
+                if block in self.proposed_blocks[block.get_round()]:
+                    print('2) Agreement Satisfied\n')
+                else:
+                    print('2) Agreement Violated\n')
         send(('done',), to=parent())
 
