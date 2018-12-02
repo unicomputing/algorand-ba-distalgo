@@ -345,7 +345,7 @@ class User(process):
         @rtype: L{Block}
         """
         if block_hash not in self.blockofhash:
-            send(('WhatIsBlock', block_hash), to=self.neighbours)
+            send(('WhatIsBlock', block_hash), to=self.controller)
             await(block_hash in self.blockofhash)
         return self.blockofhash[block_hash]
 
@@ -419,6 +419,44 @@ def initial_context():
     ctx.add_block(starting_block)
     return ctx
 
+def find_smallest_coprime(n):
+    """
+    Smallest co-prime number for n, that is >= 2
+
+    @param n: Number for which co-prime is to be found
+    @type n: C{int}
+    @return: Positive integer value that is co-prime to n
+    @rtype: C{int}
+    """
+    for i in range(2, n):
+        if math.gcd(i, n) == 1:
+            return i
+
+
+def create_gossip_neighbours(users_list, my_id):
+    """
+    Creates a set of processes which will be neighbours to the process with ID = my_id
+
+    @param users_list: A list of all user processes
+    @type users_list: C{list}
+    @param my_id: A user process for which neighbours must be defined
+    @type my_id: L{User}
+    @return: Set of neighbours
+    @rtype: C{set}
+    """
+    n_users = len(users_list)
+    num_neighbours = random.randint(2, n_users)
+
+    neighbours_set = set()
+    n_search = find_smallest_coprime(n_users)
+    i = users_list.index(my_id)
+
+    for _ in range(num_neighbours):
+        neighbours_set.add(users_list[i])
+        i = (i + n_search) % n_users
+    # output('Neighbours of {} = {}'.format(my_id, neighbours_set))
+    return neighbours_set
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--users', help='Number of users the algorand runs with', type=int, dest='nusers',
@@ -470,7 +508,10 @@ def main():
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context, 0.2))
 
-    for p in ps: setup(p, (ps-{p}, ctrl, context))
+    users_list = list(ps)
+    for p in ps:
+        neighbours_set = create_gossip_neighbours(users_list, p)
+        setup(p, (neighbours_set, ctrl, context))
     start(ps)
     start(ctrl)
     await(received(('done',), from_=ctrl))

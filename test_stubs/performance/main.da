@@ -8,14 +8,13 @@ def main():
     params.lambda_step = 10
 
 
-    for i in range(20, 61, 5):
+    for i in range(6,61, 5):
         for j in range(3):
             # if i in range(6,11):
             params.tau_step = 15
-            params.tau_proposer = 3
+            params.tau_proposer = 10
             params.tau_final = 15
-            params.lambda_step = 10
-            params.lambda_block = 10
+
             # elif i in range(11,21):
             #     params.tau_step = 9
             #     params.tau_proposer = 6
@@ -31,7 +30,10 @@ def main():
             ps = new(algo.User, num=i)
             ctrl = new(Controller, (ps, params.lambda_block, context, 0.2))
 
-            for p in ps: setup(p, (ps-{p}, ctrl, context))
+            users_list = list(ps)
+            for p in ps:
+                neighbours_set = algo.create_gossip_neighbours(users_list, p)
+                setup(p, (neighbours_set, ctrl, context))
             start(ps)
             start(ctrl)
             await(received(('done',), from_=ctrl))
