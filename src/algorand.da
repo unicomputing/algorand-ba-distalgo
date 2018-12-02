@@ -542,9 +542,6 @@ def main():
     parser.add_argument('-bp', '--byzantine_proposer', help='', dest='byzantine_proposer',
                         action='store_true', default=False)
 
-    parser.add_argument('-bc', '--byzantine_committee', help='', dest='byzantine_committee',
-                        action='store_true', default=False)
-
     args = vars(parser.parse_args())
 
     n_users = args['nusers']
@@ -559,12 +556,11 @@ def main():
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
     byzantine_proposer =  args['byzantine_proposer']
-    byzantine_committee = args['byzantine_committee'] and (n_traitors > 0) and (stake_traitors > 0)
     context = initial_context()
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context,
                             n_traitors, stake_traitors,
-                            byzantine_proposer, byzantine_committee))
+                            byzantine_proposer))
 
     users_list = list(ps)
     for p in ps:
