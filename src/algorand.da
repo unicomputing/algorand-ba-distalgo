@@ -32,10 +32,7 @@ class User(process):
     def receive(msg=('Propose', round_num)):
         block = Block(str(self), round_num, H(self.context.prev_block()))
         self.curr_round_num = round_num
-        if self.IAmTraitor:
-            ByzantineProposal(block)
-        else:
-            Proposal(block)
+        Proposal(block)
 
     def receive(msg=('ByzantinePropose', round_num)):
         block = Block(str(self), round_num, H(self.context.prev_block()))
@@ -97,10 +94,16 @@ class User(process):
             if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
                 self.highest_priority_block = (self, mal_2)
 
-        # elif msg[0] == 'CommitteeGossip':
-        #     tag, round_num, step, ps_id, h_prev, value = msg
-
-
+        elif msg[0] == 'CommitteeGossip':
+            tag, round_num, step, ps_id, h_prev, value = msg
+            if random.randint(1, 2) == 1:
+                mal = Block(str(self)+'_mal', round_num, H(self.context.prev_block()))
+                mal_hash = H(mal)
+                send(('Proposal', round_num, ps_id, mal), to=self.controller)
+            else:
+                mal = Block(None, round_num, H(self.context.prev_block()))
+                mal_hash = H(mal)
+            Gossip(msg=('CommitteeGossip', round_num, ps_id, mal), to=self.neighbours)
 
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
@@ -218,12 +221,12 @@ class User(process):
         """
         votes = BlindSortition(round, step, role="committee")
         if votes > 0:
-            # if self.IAmTraitor:
-            #     output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
-            #     ByzantineGossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
-            # else:
-            output('I am a Committee Member at step {} with {} votes'.format(step, votes))
-            Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
+            if self.IAmTraitor:
+                output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
+                ByzantineGossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
+            else:
+                output('I am a Committee Member at step {} with {} votes'.format(step, votes))
+                Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
         """
@@ -328,8 +331,8 @@ class User(process):
 
             CommitteeVote(context, round, step, r)
             r = CountVotes(context, round, step, params.T_step, params.tau_step, params.lambda_step)
-            if r=="TIMEOUT":
-                if CommonCoin()==0:
+            if r == "TIMEOUT":
+                if CommonCoin() == 0:
                     output('[BinaryBA*] CommonCoin returned 0, so using block_hash')
                     r = block_hash
                 else:
