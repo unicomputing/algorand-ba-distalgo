@@ -103,7 +103,7 @@ class User(process):
             else:
                 mal = Block(None, round_num, H(self.context.prev_block()))
                 mal_hash = H(mal)
-            Gossip(msg=('CommitteeGossip', round_num, ps_id, mal), to=self.neighbours)
+            Gossip(msg=('CommitteeGossip', round_num, ps_id, mal_hash), to=self.neighbours)
 
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
