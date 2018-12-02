@@ -341,7 +341,7 @@ class User(process):
 
             step = step+1
 
-        output('Binary BA*')
+        send(('LivenessFailed', round), to=self.controller)
 
     def CommonCoin():
         if random.random() < 0.5:
