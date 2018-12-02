@@ -40,35 +40,18 @@ class User(process):
     def receive(msg=('ByzantinePropose', round_num)):
         block = Block(str(self), round_num, H(self.context.prev_block()))
         self.curr_round_num = round_num
-        ByzantineProposal(block)
+        ByzantineGossip(('Proposal', self.curr_round_num, self, block))
 
     def Proposal(block: Block):
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
-        Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
+        if self.IAmTraitor:
+            ByzantineGossip(('Proposal', self.curr_round_num, self, block))
+        else:
+            Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
         if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
             self.highest_priority_block = (self, block)
-
-    def ByzantineProposal(block: Block):
-
-        mal_1 = Block(block.get_value()+"_mal_1", block.get_round(), block.get_prev_hash(), block.get_timestamp())
-        mal_2 = Block(block.get_value()+"_mal_2", block.get_round(), block.get_prev_hash(), block.get_timestamp())
-
-        mal_1_hash = H(mal_1)
-        if mal_1_hash not in self.blockofhash:
-            self.blockofhash[mal_1_hash] = mal_1
-        mal_2_hash = H(mal_2)
-        if mal_2_hash not in self.blockofhash:
-            self.blockofhash[mal_2_hash] = mal_2
-
-        receiver_set_1 = set(random.sample(self.neighbours, len(self.neighbours)//2)).union({self.controller})
-        receiver_set_2 = (self.neighbours - receiver_set_1).union({self.controller})
-        Gossip(msg=('Proposal', self.curr_round_num, self, mal_1), to=receiver_set_1)
-        Gossip(msg=('Proposal', self.curr_round_num, self, mal_2), to=receiver_set_2)
-
-        if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
-            self.highest_priority_block = (self, mal_2)
 
     def Gossip(msg, to=None):
         """
@@ -90,6 +73,35 @@ class User(process):
             send(msg, to=self.neighbours)
         else:
             send(msg, to=to)
+
+    def ByzantineGossip(msg, to=None):
+
+        if msg[0] == 'Proposal':
+            tag, round_num, ps_id, block = msg
+            mal_1 = Block(block.get_value() + "_mal_1", block.get_round(), block.get_prev_hash(), block.get_timestamp())
+            mal_2 = Block(block.get_value() + "_mal_2", block.get_round(), block.get_prev_hash(), block.get_timestamp())
+
+            mal_1_hash = H(mal_1)
+            if mal_1_hash not in self.blockofhash:
+                self.blockofhash[mal_1_hash] = mal_1
+            mal_2_hash = H(mal_2)
+            if mal_2_hash not in self.blockofhash:
+                self.blockofhash[mal_2_hash] = mal_2
+
+            receiver_set_1 = set(random.sample(self.neighbours, len(self.neighbours) // 2)).union({self.controller})
+            receiver_set_2 = (self.neighbours - receiver_set_1).union({self.controller})
+
+            Gossip(msg=('Proposal', round_num, ps_id, mal_1), to=receiver_set_1)
+            Gossip(msg=('Proposal', round_num, ps_id, mal_2), to=receiver_set_2)
+
+            if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
+                self.highest_priority_block = (self, mal_2)
+
+        # elif msg[0] == 'CommitteeGossip':
+        #     tag, round_num, step, ps_id, h_prev, value = msg
+
+
+
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
         # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
@@ -206,10 +218,11 @@ class User(process):
         """
         votes = BlindSortition(round, step, role="committee")
         if votes > 0:
-            if self.IAmTraitor:
-                output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
-            else:
-                output('I am a Committee Member at step {} with {} votes'.format(step, votes))
+            # if self.IAmTraitor:
+            #     output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
+            #     ByzantineGossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
+            # else:
+            output('I am a Committee Member at step {} with {} votes'.format(step, votes))
             Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
@@ -365,15 +378,8 @@ class User(process):
             return empty_hash
         return hblock2
 
-    def receive(msg=('BlockOfHashIs', block_hash, block), from_=p):
-        if H(block) != block_hash:
-            output('WARNING: {} IS A TRAITOR!'.format(p))
-        else:
-            self.blockofhash[block_hash] = block
-
-    def receive(msg=('WhatIsBlock', block_hash), from_=p):
-        if block_hash in self.blockofhash:
-            send(('BlockOfHashIs', block_hash, self.blockofhash[block_hash]), to=p)
+    def receive(msg=('BlockOfHashIs', block_hash, block)):
+        self.blockofhash[block_hash] = block
 
     def BlockOfHash(block_hash):
         """
@@ -386,7 +392,7 @@ class User(process):
         @rtype: L{Block}
         """
         if block_hash not in self.blockofhash:
-            send(('WhatIsBlock', block_hash), to=self.neighbours)
+            send(('WhatIsBlock', block_hash), to=self.controller)
             await(block_hash in self.blockofhash)
         return self.blockofhash[block_hash]
 

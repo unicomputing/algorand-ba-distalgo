@@ -24,7 +24,8 @@ class Controller(process):
         self.num_final_committee = params.tau_final
         self.results = dict()
         self.committees_created = dict()
-        self.proposed_blocks = {}
+        self.proposed_blocks = dict()
+        self.blockofhash = dict()
 
         tr = np.random.choice(np.arange(0, self.nprocs), size=n_traitors, replace=False)
         self.traitors = {self.ps_list[i] for i in tr}
@@ -39,8 +40,12 @@ class Controller(process):
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
             self.proposed_blocks[round_num].add(block)
+            self.blockofhash[round_num][H(block)] = block
         else:
             self.proposed_blocks[round_num] = {block}
+            Empty = Block(None, round_num, self.context.prev_block())
+            self.blockofhash[round_num] = {H(block):block,
+                                           H(Empty):Empty}
 
     def receive(msg=('IsUserInCommittee', round_num, step, q), from_=p):
         if step == 'FINAL':
@@ -57,6 +62,10 @@ class Controller(process):
         if curr_round is None or curr_round < round_num:
             Sortition(self.num_proposers, round_num, None, 'Proposers')
         send(('IsProposerReply', round_num, int(q in self.proposers)), to=p)
+
+    def receive(msg=('WhatIsBlock', block_hash), from_=p):
+        if block_hash in self.blockofhash[self.curr_round]:
+            send(('BlockOfHashIs', block_hash, self.blockofhash[block_hash]), to=p)
 
     def Sortition(num_role, round, step, role):
         """
