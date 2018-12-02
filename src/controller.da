@@ -29,6 +29,7 @@ class Controller(process):
         tr = np.random.choice(np.arange(0, self.nprocs), size=n_traitors, replace=False)
         self.traitors = {self.ps_list[i] for i in tr}
         self.honest_users = self.ps - self.traitors
+        self.ps_list = list(self.honest_users) + list(self.traitors)
         output('Honest: {}'.format(self.honest_users))
         output('Traitors: {}'.format(self.traitors))
 
