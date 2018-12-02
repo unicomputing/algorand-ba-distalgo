@@ -43,7 +43,7 @@ class User(process):
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
-        if self.IAmTraitor:
+        if self.IAmTraitor and len(self.neighbours) > 2:
             ByzantineGossip(('Proposal', self.curr_round_num, self, block))
         else:
             Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
@@ -103,7 +103,7 @@ class User(process):
             else:
                 mal = Block(None, round_num, H(self.context.prev_block()))
                 mal_hash = H(mal)
-            Gossip(msg=('CommitteeGossip', round_num, ps_id, mal_hash), to=self.neighbours)
+            Gossip(msg=('CommitteeGossip', round_num, step, ps_id, h_prev, mal_hash), to=self.neighbours)
 
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
