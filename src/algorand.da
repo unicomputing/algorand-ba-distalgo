@@ -32,10 +32,7 @@ class User(process):
     def receive(msg=('Propose', round_num)):
         block = Block(str(self), round_num, H(self.context.prev_block()))
         self.curr_round_num = round_num
-        if self.IAmTraitor:
-            ByzantineProposal(block)
-        else:
-            Proposal(block)
+        Proposal(block)
 
     def receive(msg=('ByzantinePropose', round_num)):
         block = Block(str(self), round_num, H(self.context.prev_block()))
