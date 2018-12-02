@@ -6,7 +6,7 @@ from H import H
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, n_traitors, stake_traitors, byzantine_proposer, byzantine_committee):
+    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
@@ -14,7 +14,7 @@ class Controller(process):
         self.context = context
         self.n_traitors = n_traitors
         self.n_honest = self.nprocs - n_traitors
-        self.stake_traitors = stake_traitors
+        self.stake_traitors = stake_traitors if n_traitors > 0 else 0
         self.step = None
         self.curr_round = None
         self.W = dict()
@@ -36,7 +36,6 @@ class Controller(process):
         output('Traitors: {}'.format(self.traitors))
 
         self.byzantine_proposer = byzantine_proposer
-        self.byzantine_committee = byzantine_committee
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
