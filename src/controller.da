@@ -1,4 +1,3 @@
-import random
 import numpy as np
 from block import Block
 import parameters as params
@@ -6,7 +5,7 @@ from H import H
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, block_size=0):
+    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, pbp=False, monitor=None, block_size=0):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
@@ -37,8 +36,9 @@ class Controller(process):
         self.ps_list = list(self.honest_users) + list(self.traitors)
         output('Honest: {}'.format(self.honest_users))
         output('Traitors: {}'.format(self.traitors))
-
+        self.pbp = pbp
         self.byzantine_proposer = byzantine_proposer
+        self.monitor = monitor
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
@@ -108,6 +108,7 @@ class Controller(process):
                 weight_traitors = np.array(self.W[round][self.n_honest:]) / sum(self.W[round][self.n_honest:])
                 comm_honest = num_role - comm_traitors
                 weight_honest = np.array(self.W[round][:self.n_honest]) / sum(self.W[round][:self.n_honest])
+
                 honest_idx, traitor_idx = list(), list()
                 if self.n_honest > 0:
                     honest_idx = list(np.random.choice(np.arange(0, self.n_honest),
@@ -117,6 +118,7 @@ class Controller(process):
                     traitor_idx = list(np.random.choice(np.arange(self.n_honest, self.nprocs),
                                                         size=comm_traitors,
                                                         p=weight_traitors))
+
                 output('honest_idx = {}'.format(honest_idx))
                 output('traitor_idx = {}'.format(traitor_idx))
                 selection = honest_idx + traitor_idx
@@ -185,10 +187,9 @@ class Controller(process):
         self.livenesscheck[0] = set()
         send(('YouAreTraitor',), to=self.traitors)
         proposerSet = Sortition(self.num_proposers, 0, None, 'Proposer')
-        if self.byzantine_proposer:
+        if self.byzantine_proposer and self.pbp:
             max_prop_id = max(proposerSet)
             send(('Propose', self.curr_round), to=proposerSet-{max_prop_id})
-            send(('ByzantinePropose', self.curr_round), to=max_prop_id)
             send(('ByzantinePropose', self.curr_round), to=max_prop_id)
         else:
             send(('Propose', self.curr_round), to=proposerSet)
@@ -236,19 +237,26 @@ class Controller(process):
 
         # Correctness Testing
         print("\n Correctness Testing")
+        agr, val, liv = True, True, True
         total_blocks = set(tentative_blocks).union(set(final_blocks))
         if len(total_blocks) != 1:
-            print('1) Safety Violated')
+            print('1) Agreement Violated')
+            agr = False
+            if len(self.livenesscheck[0]) != 0:
+                liv = False
         else:
-            print('1) Safety Satisfied')
+            print('1) Agreement Satisfied')
             for block in total_blocks:
                 if block in self.proposed_blocks[block.get_round()] or self.isEmptyBlock(block):
-                    print('2) Agreement Satisfied')
+                    print('2) Validity Satisfied')
                 else:
-                    print('2) Agreement Violated')
+                    print('2) Validity Violated')
+                    val = False
             if len(self.livenesscheck[0]) == 0:
                 print('3) Liveness Satisfied\n')
             else:
                 print('3) Liveness Violated\n')
+                liv = False
+        send(('correctness', agr, val, liv, len(final_blocks) == 1), to=monitor or parent())
         send(('done',), to=parent())
 

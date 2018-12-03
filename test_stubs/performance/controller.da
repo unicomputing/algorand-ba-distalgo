@@ -56,7 +56,8 @@ class Controller(process):
         self.results = dict()
         self.committees_created = dict()
         self.rudata_points = {}
-        self.proposed_blocks={}
+        self.proposed_blocks = dict()
+        self.blockofhash = dict()
 
         self.proposed_blocks = dict()
         self.blockofhash = dict()

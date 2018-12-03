@@ -24,6 +24,7 @@ def main():
                 n_users, n_traitors, traitor_stake, params.tau_step, block_size = values
                 params.tau_final = params.tau_step
                 output(n_users, n_traitors, traitor_stake, params.tau_step, block_size)
+
                 context = algo.initial_context()
                 ps = new(algo.User, num=n_users)
                 ctrl = new(Controller, (ps, params.lambda_block, context, n_traitors, traitor_stake, False, block_size, True))

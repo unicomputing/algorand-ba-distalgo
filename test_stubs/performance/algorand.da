@@ -513,7 +513,6 @@ def create_gossip_neighbours(users_list, my_id):
     # output('Neighbours of {} = {}'.format(my_id, neighbours_set))
     return neighbours_set
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--users', help='Number of users the algorand runs with', type=int, dest='nusers',
@@ -549,11 +548,14 @@ def main():
     parser.add_argument('-ms', '--max_steps', help='maximum number of steps in BinaryBA*', type=int, dest='max_steps',
                         default=params.max_steps)
 
-    parser.add_argument('-bp', '--byzantine_proposer', help='', dest='byzantine_proposer',
+    parser.add_argument('-bp', '--byzantine-proposer', help='', dest='byzantine_proposer',
                         action='store_true', default=False)
 
     parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes', type=float, dest='block_size',
                         default=0.)
+
+    parser.add_argument('-pbp', '--prevent-byzantine-proposal', help='Set to true to prevent Byzantine Proposal', dest='pbp',
+                        action='store_true', default=False)
 
     args = vars(parser.parse_args())
 
@@ -570,17 +572,19 @@ def main():
     params.max_steps = args['max_steps']
     byzantine_proposer = args['byzantine_proposer']
     block_size = args['block_size']
+    pbp = args['pbp']
     context = initial_context()
 
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context,
                             n_traitors, stake_traitors,
-                            byzantine_proposer, block_size))
+                            byzantine_proposer, block_size, pbp))
 
     users_list = list(ps)
     for p in ps:
         neighbours_set = create_gossip_neighbours(users_list, p)
-        setup(p, (neighbours_set, ctrl, context, block_size))
+        setup(p, (neighbours_set, ctrl, context, block_size, pbp))
+
     start(ps)
     start(ctrl)
     await(received(('done',), from_=ctrl))
