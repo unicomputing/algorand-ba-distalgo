@@ -35,6 +35,7 @@ class Controller(process):
     def setup(processes, lambda_t, context, frac_traitors):
         self.nprocs = len(processes)
         self.ps = processes
+        self.ps_list = list(processes)
         self.lambda_t = lambda_t
         self.context = context
         self.traitors = set(random.sample(processes, int(self.nprocs * frac_traitors)))
@@ -42,7 +43,7 @@ class Controller(process):
         self.step = None
         # self.curr_round is Current Round of BA*
         self.curr_round = None
-        self.W = None
+        self.W = dict()
         self.committee = None
         self.proposers = None
         self.num_committee = params.tau_step
@@ -51,19 +52,24 @@ class Controller(process):
         self.results = dict()
         self.committees_created = dict()
         self.rudata_points = {}
-        self.proposed_blocks={}
+        self.proposed_blocks = dict()
+        self.blockofhash = dict()
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
             self.proposed_blocks[round_num].add(block)
+            self.blockofhash[round_num][H(block)] = block
         else:
             self.proposed_blocks[round_num] = {block}
+            Empty = Block(None, round_num, self.context.prev_block())
+            self.blockofhash[round_num] = {H(block):block,
+                                           H(Empty):Empty}
 
     def receive(msg=('IsUserInCommittee', round_num, step, q), from_=p):
         if step == 'FINAL':
-            self.committees_created[step] = Sortition(self.num_final_committee, None, step, 'Committee')
+            self.committees_created[step] = Sortition(self.num_final_committee, round_num, step, 'Committee')
         elif step not in self.committees_created:
-            self.committees_created[step] = Sortition(self.num_committee, None, step, 'Committee')
+            self.committees_created[step] = Sortition(self.num_committee, round_num, step, 'Committee')
 
         if q in self.committees_created[step]:
             send(('InCommitteeReply', round_num, step, self.committees_created[step][q]), to=p)
@@ -71,9 +77,13 @@ class Controller(process):
             send(('InCommitteeReply', round_num, step, 0), to=p)
 
     def receive(msg=('IsUserProposer', round_num, q), from_=p):
-        if curr_round is None or curr_round < round_num:
+        if self.curr_round is None or self.curr_round < round_num:
             Sortition(self.num_proposers, round_num, None, 'Proposers')
         send(('IsProposerReply', round_num, int(q in self.proposers)), to=p)
+
+    def receive(msg=('WhatIsBlock', block_hash), from_=p):
+        if block_hash in self.blockofhash[self.curr_round]:
+            send(('BlockOfHashIs', block_hash, self.blockofhash[block_hash]), to=p)
 
     def Sortition(num_role, round, step, role):
         """
@@ -126,7 +136,8 @@ class Controller(process):
                 '[controller.da] Sortition generated proposers for round {}, but curr round is {}'.format(self.curr_round,
                                                                                                           round)
             if self.curr_round is None or self.curr_round < round:
-                self.proposers = set(random.sample(self.ps, num_role))
+                p = set(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=True, p=self.W[round]))
+                self.proposers = {self.ps_list[i] for i in p}
                 self.curr_round = round
             return self.proposers
 
