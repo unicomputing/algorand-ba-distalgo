@@ -9,7 +9,7 @@ import argparse
 import math
 
 class User(process):
-    def setup(neighbours, ctrl, context):
+    def setup(neighbours, ctrl, context, pbp = False):
         self.neighbours = neighbours - {self}
         self.controller = ctrl
         self.context = context
@@ -19,7 +19,7 @@ class User(process):
         self.proposers = None
         self.blockofhash = {}
         self.highest_priority_block = None
-
+        self.pbp = pbp
         self.CommitteeMemberCheck = -1
         self.ProposerCheck = -1
 
@@ -43,7 +43,7 @@ class User(process):
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
-        if self.IAmTraitor and len(self.neighbours) > 2:
+        if self.IAmTraitor and len(self.neighbours) > 2 and not self.pbp:
             ByzantineGossip(('Proposal', self.curr_round_num, self, block))
         else:
             Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
@@ -518,7 +518,7 @@ def main():
     parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=int, dest='lambda_block',
                         default=params.lambda_block)
 
-    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA⋆ step', type=int, dest='lambda_step',
+    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA* step', type=int, dest='lambda_step',
                         default=params.lambda_step)
 
     parser.add_argument('-Tf', '--t_final', help='threshold of tau final for BA*', type=float, dest='T_final',
