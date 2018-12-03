@@ -11,6 +11,9 @@ class Block(object):
         self.__timestamp = str(datetime.datetime.now()) if timestamp is None and x is not None else timestamp
 
     def get_value(self):
+        if self.__val is not None and len(self.__val) > 100:
+            x = self.__val[:20]
+            return x
         return self.__val
 
     def get_round(self):

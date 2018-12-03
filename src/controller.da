@@ -6,7 +6,7 @@ from H import H
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False):
+    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, block_size=0):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
@@ -20,11 +20,14 @@ class Controller(process):
         self.W = dict()
         self.committee = None
         self.proposers = None
+
+        self.block_size = block_size  # in KB
         self.num_committee = params.tau_step
         self.num_proposers = params.tau_proposer
         self.num_final_committee = params.tau_final
         self.results = dict()
         self.committees_created = dict()
+
         self.proposed_blocks = dict()
         self.blockofhash = dict()
         self.livenesscheck = dict()
@@ -105,13 +108,15 @@ class Controller(process):
                 weight_traitors = np.array(self.W[round][self.n_honest:]) / sum(self.W[round][self.n_honest:])
                 comm_honest = num_role - comm_traitors
                 weight_honest = np.array(self.W[round][:self.n_honest]) / sum(self.W[round][:self.n_honest])
-
-                honest_idx = list(np.random.choice(np.arange(0, self.n_honest),
-                                                   size=comm_honest,
-                                                   p=weight_honest))
-                traitor_idx = list(np.random.choice(np.arange(self.n_honest, self.nprocs),
-                                                    size=comm_traitors,
-                                                    p=weight_traitors))
+                honest_idx, traitor_idx = list(), list()
+                if self.n_honest > 0:
+                    honest_idx = list(np.random.choice(np.arange(0, self.n_honest),
+                                                       size=comm_honest,
+                                                       p=weight_honest))
+                if self.n_traitors > 0:
+                    traitor_idx = list(np.random.choice(np.arange(self.n_honest, self.nprocs),
+                                                        size=comm_traitors,
+                                                        p=weight_traitors))
                 output('honest_idx = {}'.format(honest_idx))
                 output('traitor_idx = {}'.format(traitor_idx))
                 selection = honest_idx + traitor_idx
@@ -193,7 +198,7 @@ class Controller(process):
         elif timeout(lambda_t):
             pass
 
-        send(('start_BA', ) , to=ps)
+        send(('start_BA', ) , to=self.ps)
 
         await(each(p in ps, has=received(('done',), from_=p)))
 

@@ -11,7 +11,7 @@ import argparse
 import math
 
 class User(process):
-    def setup(neighbours, ctrl, context):
+    def setup(neighbours, ctrl, context, block_size=0, prevent_byzantine_proposer=False):
         self.neighbours = neighbours - {self}
         self.controller = ctrl
         self.context = context
@@ -29,17 +29,21 @@ class User(process):
 
         self.IAmTraitor = False
 
+        self.block_size = int(block_size*1024)  # in B
+
+        self.prevent_byzantine_proposer = prevent_byzantine_proposer
+
     def receive(msg=('YouAreTraitor',)):
         self.IAmTraitor = True
-        output('I am a Traitor')
+        # output('I am a Traitor')
 
     def receive(msg=('Propose', round_num)):
-        block = Block(str(self), round_num, H(self.context.prev_block()))
+        block = Block(str(self)+'A'*self.block_size, round_num, H(self.context.prev_block()))
         self.curr_round_num = round_num
         Proposal(block)
 
     def receive(msg=('ByzantinePropose', round_num)):
-        block = Block(str(self), round_num, H(self.context.prev_block()))
+        block = Block(str(self)+'A'*self.block_size, round_num, H(self.context.prev_block()))
         self.curr_round_num = round_num
         ByzantineGossip(('Proposal', self.curr_round_num, self, block))
 
@@ -47,7 +51,7 @@ class User(process):
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
-        if self.IAmTraitor and len(self.neighbours) > 2:
+        if not self.prevent_byzantine_proposer and self.IAmTraitor and len(self.neighbours) > 2:
             ByzantineGossip(('Proposal', self.curr_round_num, self, block))
         else:
             Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
@@ -226,10 +230,10 @@ class User(process):
         votes = BlindSortition(round, step, role="committee")
         if votes > 0:
             if self.IAmTraitor:
-                output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
+                # output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
                 ByzantineGossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
             else:
-                output('I am a Committee Member at step {} with {} votes'.format(step, votes))
+                # output('I am a Committee Member at step {} with {} votes'.format(step, votes))
                 Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
@@ -275,10 +279,10 @@ class User(process):
                     counts[value] = votes
 
                 if counts[value] > T_value * tau_value:
-                    output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]))
+                    # output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]))
                     return value
             if time.time() > start + lambda_value:
-                output('CountVotes at step {} Reached TIMEOUT {}'.format(step, counts))
+                # output('CountVotes at step {} Reached TIMEOUT {}'.format(step, counts))
                 return "TIMEOUT"
 
 
@@ -336,10 +340,10 @@ class User(process):
             r = CountVotes(context, round, step, params.T_step, params.tau_step, params.lambda_step)
             if r == "TIMEOUT":
                 if CommonCoin() == 0:
-                    output('[BinaryBA*] CommonCoin returned 0, so using block_hash')
+                    # output('[BinaryBA*] CommonCoin returned 0, so using block_hash')
                     r = block_hash
                 else:
-                    output('[BinaryBA*] CommonCoin returned 1, so using empty_hash')
+                    # output('[BinaryBA*] CommonCoin returned 1, so using empty_hash')
                     r = empty_hash
 
             step = step + 1
@@ -366,20 +370,20 @@ class User(process):
         @return: Returns the hash of the block that has been chosen.
         @rtype: L{H(Block)}
         """
-        output('Reduction')
+        # output('Reduction')
         CommitteeVote(context, round, "REDUCTION_ONE", hblock)
-        output('After CommitteeVote REDUCTION_ONE')
+        # output('After CommitteeVote REDUCTION_ONE')
         hblock1 = CountVotes(context, round, "REDUCTION_ONE", params.T_step, params.tau_step,
                              params.lambda_block + params.lambda_step)
-        output('After CountVotes for REDUCTION_ONE')
+        # output('After CountVotes for REDUCTION_ONE')
         empty_hash = getEmptyBlockHash(round, H(context.prev_block()))
         if hblock1 == "TIMEOUT":
             CommitteeVote(context, round, "REDUCTION_TWO", empty_hash)
         else:
             CommitteeVote(context, round, "REDUCTION_TWO", hblock1)
-        output('After CommitteeVote REDUCTION_TWO')
+        # output('After CommitteeVote REDUCTION_TWO')
         hblock2 = CountVotes(context, round, "REDUCTION_TWO", params.T_step, params.tau_step, params.lambda_step)
-        output('After CountVotes for REDUCTION_TWO')
+        # output('After CountVotes for REDUCTION_TWO')
         if hblock2 == "TIMEOUT":
             return empty_hash
         return hblock2
@@ -432,13 +436,13 @@ class User(process):
         @return: tuple containing status of consensus and the block which has been agreed upon.
         @rtype: C{str}, L{Block}
         """
-        output('Starting BA* with block {}'.format(block.get_value()))
+        # output('Starting BA* with block {}'.format(block.get_value()))
         hblock = Reduction(context, round, H(block))
-        output('Reduction Done')
+        # output('Reduction Done')
         hblock_star = BinaryBA(context, round, hblock)
-        output('BinaryBA* Done')
+        # output('BinaryBA* Done')
         r = CountVotes(context, round, "FINAL", params.T_final, params.tau_final, params.lambda_step)
-        output('After CountVotes for FINAL')
+        # output('After CountVotes for FINAL')
         if hblock_star == r:
             return "FINAL", BlockOfHash(hblock_star)
         else:
@@ -521,10 +525,10 @@ def main():
     parser.add_argument('-st', '--stake-traitors', help='Sum of fractions of stake held by all traitors', type=float,
                         dest='stake_traitors', default=0.33)
 
-    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=int, dest='lambda_block',
+    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=float, dest='lambda_block',
                         default=params.lambda_block)
 
-    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA? step', type=int, dest='lambda_step',
+    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA? step', type=float, dest='lambda_step',
                         default=params.lambda_step)
 
     parser.add_argument('-Tf', '--t_final', help='threshold of tau final for BA*', type=float, dest='T_final',
@@ -548,8 +552,8 @@ def main():
     parser.add_argument('-bp', '--byzantine_proposer', help='', dest='byzantine_proposer',
                         action='store_true', default=False)
 
-    parser.add_argument('-bc', '--byzantine_committee', help='', dest='byzantine_committee',
-                        action='store_true', default=False)
+    parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes', type=float, dest='block_size',
+                        default=0.)
 
     args = vars(parser.parse_args())
 
@@ -565,16 +569,18 @@ def main():
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
     byzantine_proposer = args['byzantine_proposer']
+    block_size = args['block_size']
     context = initial_context()
+
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context,
                             n_traitors, stake_traitors,
-                            byzantine_proposer))
+                            byzantine_proposer, block_size))
 
     users_list = list(ps)
     for p in ps:
         neighbours_set = create_gossip_neighbours(users_list, p)
-        setup(p, (neighbours_set, ctrl, context))
+        setup(p, (neighbours_set, ctrl, context, block_size))
     start(ps)
     start(ctrl)
     await(received(('done',), from_=ctrl))

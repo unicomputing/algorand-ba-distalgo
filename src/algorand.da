@@ -9,7 +9,7 @@ import argparse
 import math
 
 class User(process):
-    def setup(neighbours, ctrl, context):
+    def setup(neighbours, ctrl, context, block_size=0):
         self.neighbours = neighbours - {self}
         self.controller = ctrl
         self.context = context
@@ -24,6 +24,10 @@ class User(process):
         self.ProposerCheck = -1
 
         self.IAmTraitor = False
+
+        self.block_size = int(block_size*1024)  # in B
+
+        output('Setup {}'.format(self))
 
     def receive(msg=('YouAreTraitor',)):
         self.IAmTraitor = True
@@ -90,7 +94,6 @@ class User(process):
 
             Gossip(msg=('Proposal', round_num, ps_id, mal_1), to=receiver_set_1)
             Gossip(msg=('Proposal', round_num, ps_id, mal_2), to=receiver_set_2)
-
             if self.highest_priority_block[0] is None or self.highest_priority_block[0] < self:
                 self.highest_priority_block = (self, mal_2)
 
@@ -441,6 +444,7 @@ class User(process):
             return "TENTATIVE", BlockOfHash(hblock_star)
 
     def run():
+        output('Started {}'.format(self))
         self.highest_priority_block = (None, Block(None, self.curr_round_num, H(self.context.prev_block())))
         await(received(('start_BA',), from_=self.controller))
         result = BA(self.context, 0, self.highest_priority_block[1])
@@ -541,6 +545,9 @@ def main():
     parser.add_argument('-bp', '--byzantine_proposer', help='', dest='byzantine_proposer',
                         action='store_true', default=False)
 
+    parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes', type=int, dest='block_size',
+                        default=0)
+
     args = vars(parser.parse_args())
 
     n_users = args['nusers']
@@ -554,17 +561,18 @@ def main():
     params.tau_proposer = args['tau_proposer']
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
-    byzantine_proposer =  args['byzantine_proposer']
+    byzantine_proposer = args['byzantine_proposer']
+    block_size = args['block_size']
     context = initial_context()
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context,
                             n_traitors, stake_traitors,
-                            byzantine_proposer))
+                            byzantine_proposer, block_size))
 
     users_list = list(ps)
     for p in ps:
         neighbours_set = create_gossip_neighbours(users_list, p)
-        setup(p, (neighbours_set, ctrl, context))
+        setup(p, (neighbours_set, ctrl, context, block_size))
     start(ps)
     start(ctrl)
     await(received(('done',), from_=ctrl))

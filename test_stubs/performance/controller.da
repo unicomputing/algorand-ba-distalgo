@@ -33,7 +33,8 @@ class ResourceUsageData:
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False):
+    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, block_size=0,
+              prevent_byzantine_proposer=False):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
@@ -48,6 +49,7 @@ class Controller(process):
         self.committee = None
         self.proposers = None
 
+        self.block_size = block_size  # in KB
         self.num_committee = params.tau_step
         self.num_proposers = params.tau_proposer
         self.num_final_committee = params.tau_final
@@ -59,12 +61,14 @@ class Controller(process):
         self.proposed_blocks = dict()
         self.blockofhash = dict()
         self.livenesscheck = dict()
+
         tr = np.random.choice(np.arange(0, self.nprocs), size=n_traitors, replace=False)
         self.traitors = {self.ps_list[i] for i in tr}
         self.honest_users = self.ps - self.traitors
         self.ps_list = list(self.honest_users) + list(self.traitors)
 
-        self.byzantine_proposer = byzantine_proposer
+        self.byzantine_proposer = byzantine_proposer and not prevent_byzantine_proposer
+        self.prevent_byzantine_proposer = prevent_byzantine_proposer
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
@@ -128,16 +132,19 @@ class Controller(process):
                 # output('Committee Sortition Requirements Satisfied')
                 # selection = list(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=True, p=self.W[round]))
                 comm_traitors = int(num_role*self.stake_traitors)
-                weight_traitors = np.array(self.W[round][self.n_honest:]) / sum(self.W[round][self.n_honest:])
                 comm_honest = num_role - comm_traitors
-                weight_honest = np.array(self.W[round][:self.n_honest]) / sum(self.W[round][:self.n_honest])
 
-                honest_idx = list(np.random.choice(np.arange(0, self.n_honest),
-                                                   size=comm_honest,
-                                                   p=weight_honest))
-                traitor_idx = list(np.random.choice(np.arange(self.n_honest, self.nprocs),
-                                                    size=comm_traitors,
-                                                    p=weight_traitors))
+                honest_idx, traitor_idx = list(), list()
+                if comm_honest > 0:
+                    weight_honest = np.array(self.W[round][:self.n_honest]) / sum(self.W[round][:self.n_honest])
+                    honest_idx = list(np.random.choice(np.arange(0, self.n_honest),
+                                                       size=comm_honest,
+                                                       p=weight_honest))
+                if comm_traitors > 0:
+                    weight_traitors = np.array(self.W[round][self.n_honest:]) / sum(self.W[round][self.n_honest:])
+                    traitor_idx = list(np.random.choice(np.arange(self.n_honest, self.nprocs),
+                                                        size=comm_traitors,
+                                                        p=weight_traitors))
                 # output('honest_idx = {}'.format(honest_idx))
                 # output('traitor_idx = {}'.format(traitor_idx))
                 selection = honest_idx + traitor_idx
@@ -195,9 +202,7 @@ class Controller(process):
         if round_num not in self.W:
             honest_stakes = distribute_stakes(self.n_honest, 1 - self.stake_traitors)
             traitor_stakes = distribute_stakes(self.n_traitors, self.stake_traitors)
-
             self.W[round_num] = honest_stakes + traitor_stakes
-            # output('Stakes: {}'.format({self.ps_list[i]:self.W[round_num][i] for i in range(0, self.nprocs)}))
         return self.W[round_num]
 
     def receive(msg= ('done' , rudata, ruid), from_=p):
@@ -219,10 +224,9 @@ class Controller(process):
         self.livenesscheck[0] = set()
         send(('YouAreTraitor',), to=self.traitors)
         proposerSet = Sortition(self.num_proposers, 0, None, 'Proposer')
-        if self.byzantine_proposer:
+        if self.byzantine_proposer and not self.prevent_byzantine_proposer:
             max_prop_id = max(proposerSet)
             send(('Propose', self.curr_round), to=proposerSet - {max_prop_id})
-            send(('ByzantinePropose', self.curr_round), to=max_prop_id)
             send(('ByzantinePropose', self.curr_round), to=max_prop_id)
         else:
             send(('Propose', self.curr_round), to=proposerSet)
@@ -232,7 +236,7 @@ class Controller(process):
         elif timeout(lambda_t):
             pass
 
-        send(('start_BA', ) , to=ps)
+        send(('start_BA',), to=ps)
 
         await(each(p in ps, has=received(('done',), from_=p)))
 
@@ -311,14 +315,17 @@ class Controller(process):
             with open('results.csv', 'w') as f:
                 f.write('NumUsers, NumTraitors, BlockSize, CommitteeSize, TraitorStake, '
                         +'Validity, Agreement, Termination, Time\n')
-        with open('results.csv', 'rw') as f:
+                f.flush()
+        with open('results.csv', 'r+') as f:
             if f.readline() == '':
                 f.write('NumUsers, NumTraitors, BlockSize, CommitteeSize, TraitorStake, '
                         + 'Validity, Agreement, Termination, Time\n')
+                f.flush()
         with open(r'results.csv', 'a') as f:
             writer = csv.writer(f, lineterminator='\n')
             writer.writerow([len(processes), self.n_traitors, self.block_size, params.tau_step,
                              self.stake_traitors, Validity, Agreement, Termination, t2 - t1])
+            f.flush()
         send(('done',), to=parent())
 
 
