@@ -7,6 +7,7 @@ import parameters as params
 import random
 import argparse
 import math
+from visual_utils import printable_votes, InfoColor, WarningColor
 
 class User(process):
 
@@ -224,10 +225,10 @@ class User(process):
         votes = BlindSortition(round, step, role="committee")
         if votes > 0:
             if self.IAmTraitor:
-                output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
+                output(WarningColor('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes)))
                 ByzantineGossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
             else:
-                output('I am a Committee Member at step {} with {} votes'.format(step, votes))
+                output(InfoColor('I am a Committee Member at step {} with {} votes'.format(step, votes)))
                 Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
@@ -277,7 +278,7 @@ class User(process):
                     return value
             if time.time() > start + lambda_value:
                 output('CountVotes at step {} Reached TIMEOUT\n{}'
-                       .format(step, {hval[:10]:num for hval,num in counts.items()}))
+                       .format(step, printable_votes(counts)))
                 return "TIMEOUT"
 
 
