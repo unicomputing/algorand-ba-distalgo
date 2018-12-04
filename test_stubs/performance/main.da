@@ -27,12 +27,12 @@ def main():
 
                 context = algo.initial_context()
                 ps = new(algo.User, num=n_users)
-                ctrl = new(Controller, (ps, params.lambda_block, context, n_traitors, traitor_stake, False, block_size, True))
+                ctrl = new(Controller, (ps, params.lambda_block, context, n_traitors, traitor_stake, False, True, None, block_size))
 
                 users_list = list(ps)
                 for p in ps:
                     neighbours_set = algo.create_gossip_neighbours(users_list, p)
-                    setup(p, (neighbours_set, ctrl, context, block_size, True))
+                    setup(p, (neighbours_set, ctrl, context, True, block_size))
                 start(ps)
                 start(ctrl)
                 await(received(('done',), from_=ctrl))

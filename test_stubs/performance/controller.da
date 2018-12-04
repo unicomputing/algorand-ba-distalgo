@@ -1,4 +1,3 @@
-import random
 import numpy as np
 from block import Block
 import parameters as params
@@ -33,8 +32,7 @@ class ResourceUsageData:
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, block_size=0,
-              prevent_byzantine_proposer=False):
+    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, pbp=False, monitor=None, block_size=0):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
@@ -67,9 +65,11 @@ class Controller(process):
         self.traitors = {self.ps_list[i] for i in tr}
         self.honest_users = self.ps - self.traitors
         self.ps_list = list(self.honest_users) + list(self.traitors)
-
-        self.byzantine_proposer = byzantine_proposer and not prevent_byzantine_proposer
-        self.prevent_byzantine_proposer = prevent_byzantine_proposer
+        # output('Honest: {}'.format(self.honest_users))
+        # output('Traitors: {}'.format(self.traitors))
+        self.pbp = pbp
+        self.byzantine_proposer = byzantine_proposer
+        self.monitor = monitor
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
@@ -80,6 +80,9 @@ class Controller(process):
             Empty = Block(None, round_num, self.context.prev_block())
             self.blockofhash[round_num] = {H(block):block,
                                            H(Empty):Empty}
+
+    def receive(msg=('LivenessFailed', round_num), from_=p):
+        self.livenesscheck[round_num].add(p)
 
     def receive(msg=('IsUserInCommittee', round_num, step, q), from_=p):
         if step == 'FINAL':
@@ -225,9 +228,9 @@ class Controller(process):
         self.livenesscheck[0] = set()
         send(('YouAreTraitor',), to=self.traitors)
         proposerSet = Sortition(self.num_proposers, 0, None, 'Proposer')
-        if self.byzantine_proposer and not self.prevent_byzantine_proposer:
+        if self.byzantine_proposer and self.pbp:
             max_prop_id = max(proposerSet)
-            send(('Propose', self.curr_round), to=proposerSet - {max_prop_id})
+            send(('Propose', self.curr_round), to=proposerSet-{max_prop_id})
             send(('ByzantinePropose', self.curr_round), to=max_prop_id)
         else:
             send(('Propose', self.curr_round), to=proposerSet)
@@ -276,30 +279,30 @@ class Controller(process):
         #         print('List of users with this block: {}'.format(final_users[block]))
         #         print(block)
 
-        Agreement = False
-        Validity = False
-        Termination = False
-
         # Correctness Testing
         # print("\n Correctness Testing")
+        agr, val, liv = True, True, True
         total_blocks = set(tentative_blocks).union(set(final_blocks))
         if len(total_blocks) != 1:
             # print('1) Agreement Violated')
-            pass
+            agr = False
+            if len(self.livenesscheck[0]) != 0:
+                liv = False
         else:
             # print('1) Agreement Satisfied')
-            Agreement = True
             for block in total_blocks:
                 if block in self.proposed_blocks[block.get_round()] or isEmptyBlock(block):
                     # print('2) Validity Satisfied')
-                    Validity = True
-                # else:
+                    pass
+                else:
                 #     print('2) Validity Violated')
+                    val = False
             if len(self.livenesscheck[0]) == 0:
                 # print('3) Liveness Satisfied\n')
-                Termination = True
-            # else:
+                pass
+            else:
             #     print('3) Liveness Violated\n')
+                liv = False
 
         # jsondata = {}
         # for rugroup_id, points in rudata_points.items():
@@ -312,6 +315,7 @@ class Controller(process):
         # jsondata['Wallclock_time'] = t2 - t1
         # jsonoutput = json.dumps(jsondata)
         #print("###OUTPUT: " + jsonoutput)
+
         if not os.path.isfile('results.csv'):
             with open('results.csv', 'w') as f:
                 f.write('NumUsers, NumTraitors, BlockSize, CommitteeSize, TraitorStake, '
@@ -324,9 +328,10 @@ class Controller(process):
                 f.flush()
         with open(r'results.csv', 'a') as f:
             writer = csv.writer(f, lineterminator='\n')
-            writer.writerow([len(processes), self.n_traitors, self.block_size, params.tau_step,
-                             self.stake_traitors, Validity, Agreement, Termination, t2 - t1])
+            writer.writerow([self.nprocs, self.n_traitors, self.block_size, params.tau_step,
+                             self.stake_traitors, val, agr, liv, t2 - t1])
             f.flush()
-        send(('done',), to=parent())
 
+        send(('correctness', agr, val, liv, len(final_blocks) == 1), to=monitor or parent())
+        send(('done',), to=parent())
 

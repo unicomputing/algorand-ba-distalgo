@@ -11,7 +11,8 @@ import argparse
 import math
 
 class User(process):
-    def setup(neighbours, ctrl, context, block_size=0, prevent_byzantine_proposer=False):
+
+    def setup(neighbours, ctrl, context, pbp = False, block_size=0):
         self.neighbours = neighbours - {self}
         self.controller = ctrl
         self.context = context
@@ -21,17 +22,14 @@ class User(process):
         self.proposers = None
         self.blockofhash = {}
         self.highest_priority_block = None
-
+        self.pbp = pbp
         self.rudata = ResourceUsageData()
-
         self.CommitteeMemberCheck = -1
         self.ProposerCheck = -1
 
         self.IAmTraitor = False
 
         self.block_size = int(block_size*1024)  # in B
-
-        self.prevent_byzantine_proposer = prevent_byzantine_proposer
 
     def receive(msg=('YouAreTraitor',)):
         self.IAmTraitor = True
@@ -51,7 +49,7 @@ class User(process):
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
-        if not self.prevent_byzantine_proposer and self.IAmTraitor and len(self.neighbours) > 2:
+        if self.IAmTraitor and len(self.neighbours) > 2 and not self.pbp:
             ByzantineGossip(('Proposal', self.curr_round_num, self, block))
         else:
             Gossip(('Proposal', self.curr_round_num, self, block), to=self.neighbours.union({self.controller}))
@@ -460,7 +458,7 @@ class User(process):
 
         self.rudata.end()
         send(('done', self.rudata, self), to=self.controller)
-        send(('done', ), to=self.controller)
+        send(('done',), to=self.controller)
         #output('terminating User ', self)
         # await(received(('done',), from_=parent()))
 
@@ -524,10 +522,10 @@ def main():
     parser.add_argument('-st', '--stake-traitors', help='Sum of fractions of stake held by all traitors', type=float,
                         dest='stake_traitors', default=0.33)
 
-    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=float, dest='lambda_block',
+    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=int, dest='lambda_block',
                         default=params.lambda_block)
 
-    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA? step', type=float, dest='lambda_step',
+    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA* step', type=int, dest='lambda_step',
                         default=params.lambda_step)
 
     parser.add_argument('-Tf', '--t_final', help='threshold of tau final for BA*', type=float, dest='T_final',
@@ -548,14 +546,16 @@ def main():
     parser.add_argument('-ms', '--max_steps', help='maximum number of steps in BinaryBA*', type=int, dest='max_steps',
                         default=params.max_steps)
 
-    parser.add_argument('-bp', '--byzantine-proposer', help='', dest='byzantine_proposer',
-                        action='store_true', default=False)
+    parser.add_argument('-bp', '--byzantine-proposer',
+                        help='Force highest-priority proposer to be malicious regardless of stake-traitors',
+                        dest='byzantine_proposer', action='store_true', default=False)
 
-    parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes', type=float, dest='block_size',
-                        default=0.)
+    parser.add_argument('-pbp', '--prevent-byzantine-proposer',
+                        help='Prevent any proposer from being malicious (overrides byzantine-proposer)',
+                        dest='pbp', action='store_true', default=False)
 
-    parser.add_argument('-pbp', '--prevent-byzantine-proposal', help='Set to true to prevent Byzantine Proposal', dest='pbp',
-                        action='store_true', default=False)
+    parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes', type=int, dest='block_size',
+                        default=0)
 
     args = vars(parser.parse_args())
 
@@ -578,13 +578,12 @@ def main():
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context,
                             n_traitors, stake_traitors,
-                            byzantine_proposer, block_size, pbp))
+                            byzantine_proposer, pbp, None, block_size))
 
     users_list = list(ps)
     for p in ps:
         neighbours_set = create_gossip_neighbours(users_list, p)
-        setup(p, (neighbours_set, ctrl, context, block_size, pbp))
-
+        setup(p, (neighbours_set, ctrl, context, pbp, block_size))
     start(ps)
     start(ctrl)
     await(received(('done',), from_=ctrl))
