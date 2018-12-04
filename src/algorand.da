@@ -276,7 +276,8 @@ class User(process):
                     output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]))
                     return value
             if time.time() > start + lambda_value:
-                output('CountVotes at step {} Reached TIMEOUT {}'.format(step, counts))
+                output('CountVotes at step {} Reached TIMEOUT\n{}'
+                       .format(step, {hval[:10]:num for hval,num in counts.items()}))
                 return "TIMEOUT"
 
 
@@ -445,6 +446,8 @@ class User(process):
     def run():
         self.highest_priority_block = (None, Block(None, self.curr_round_num, H(self.context.prev_block())))
         await(received(('start_BA',), from_=self.controller))
+        # output('Highest Priority Block:\n\nProposer: {}\n\n{}\n'.format(self.highest_priority_block[0],
+        #                                                                 self.highest_priority_block[1]))
         result = BA(self.context, 0, self.highest_priority_block[1])
         output('Completed BA*')
 

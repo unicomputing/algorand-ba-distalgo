@@ -11,7 +11,7 @@ class Block(object):
         self.__timestamp = str(datetime.datetime.now()) if timestamp is None and x is not None else timestamp
 
     def get_value(self):
-        if self.__val is not None and len(self.__val) > 100:
+        if self.__val is not None and len(self.__val) > 20:
             x = self.__val[:20]
             return x
         return self.__val
@@ -34,8 +34,8 @@ class Block(object):
         elif type(self) != type(other):
             return False
         else:
-            return (self.__val == other.get_value() and self.__round == other.get_round()
-                    and self.__prev_hash == other.get_prev_hash() and self.__timestamp == other.get_timestamp())
+            return (self.get_value() == other.get_value() and self.get_round() == other.get_round()
+                    and self.get_prev_hash() == other.get_prev_hash() and self.get_timestamp() == other.get_timestamp())
 
     def __hash__(self):
         return hash(( self.__val, self.__prev_hash, self.__round, self.__timestamp))
@@ -44,7 +44,7 @@ class Block(object):
 
         table = PrettyTable(field_names=['Value', 'PreviousHash', 'Round', 'Timestamp'])
         table.title = 'Block {}'.format(self.__round)
-        table.add_row([self.__val, self.__prev_hash[:7], self.__round, self.__timestamp])
+        table.add_row([self.get_value(), self.__prev_hash[:7], self.__round, self.__timestamp])
 
         return str(table)
         # return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\
