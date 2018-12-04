@@ -551,7 +551,7 @@ def main():
                         help='Prevent any proposer from being malicious (overrides byzantine-proposer)',
                         dest='pbp', action='store_true', default=False)
 
-    parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes', type=float, dest='block_size',
+    parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes (bl <= 3)', type=float, dest='block_size',
                         default=0)
 
     args = vars(parser.parse_args())
@@ -568,7 +568,7 @@ def main():
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
     byzantine_proposer = args['byzantine_proposer']
-    block_size = args['block_size']
+    block_size = min(args['block_size'], 3)
     pbp = args['pbp']
     context = initial_context()
     ps = new(User, num=n_users)
