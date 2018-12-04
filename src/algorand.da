@@ -225,10 +225,10 @@ class User(process):
         votes = BlindSortition(round, step, role="committee")
         if votes > 0:
             if self.IAmTraitor:
-                output(WarningColor('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes)))
+                output(WarningColor('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes), step))
                 ByzantineGossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
             else:
-                output(InfoColor('I am a Committee Member at step {} with {} votes'.format(step, votes)))
+                output(InfoColor('I am a Committee Member at step {} with {} votes'.format(step, votes), step))
                 Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
@@ -278,7 +278,7 @@ class User(process):
                     return value
             if time.time() > start + lambda_value:
                 output('CountVotes at step {} Reached TIMEOUT\n{}'
-                       .format(step, printable_votes(counts)))
+                       .format(step, printable_votes(counts, step)))
                 return "TIMEOUT"
 
 
@@ -520,10 +520,10 @@ def main():
     parser.add_argument('-st', '--stake-traitors', help='Sum of fractions of stake held by all traitors', type=float,
                         dest='stake_traitors', default=0.33)
 
-    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=int, dest='lambda_block',
+    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=float, dest='lambda_block',
                         default=params.lambda_block)
 
-    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA* step', type=int, dest='lambda_step',
+    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA* step', type=float, dest='lambda_step',
                         default=params.lambda_step)
 
     parser.add_argument('-Tf', '--t_final', help='threshold of tau final for BA*', type=float, dest='T_final',

@@ -1,7 +1,7 @@
 from termcolor import colored
 
 
-def printable_votes(votes_dict: dict):
+def printable_votes(votes_dict: dict, step=0):
     if not len(votes_dict):
         return ''
 
@@ -17,18 +17,22 @@ def printable_votes(votes_dict: dict):
     return string
 
 
-def WarningColor(string):
+def WarningColor(string, step=0):
     if not len(string):
         return string
+    attrs = list()
+    if step == 'FINAL':
+        attrs.append('bold')
+    return colored(string, color='red', attrs=attrs)
 
-    return colored(string, color='red', attrs=['bold'])
 
-
-def InfoColor(string):
+def InfoColor(string, step=0):
     if not len(string):
         return string
-
-    return colored(string, color='green', attrs=['bold'])
+    attrs = list()
+    if step == 'FINAL':
+        attrs.append('bold')
+    return colored(string, color='green', attrs=attrs)
 
 
 if __name__ == '__main__':

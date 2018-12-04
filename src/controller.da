@@ -103,25 +103,25 @@ class Controller(process):
                 '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
             if self.step is None or self.step != step or self.step < step:
                 output('Committee Sortition Requirements Satisfied')
-                # selection = list(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=True, p=self.W[round]))
-                comm_traitors = int(num_role*self.stake_traitors)
-                weight_traitors = np.array(self.W[round][self.n_honest:]) / sum(self.W[round][self.n_honest:])
-                comm_honest = num_role - comm_traitors
-                weight_honest = np.array(self.W[round][:self.n_honest]) / sum(self.W[round][:self.n_honest])
+                selection = list(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=True, p=self.W[round]))
+                # comm_traitors = int(num_role*self.stake_traitors)
+                # weight_traitors = np.array(self.W[round][self.n_honest:]) / sum(self.W[round][self.n_honest:])
+                # comm_honest = num_role - comm_traitors
+                # weight_honest = np.array(self.W[round][:self.n_honest]) / sum(self.W[round][:self.n_honest])
+                #
+                # honest_idx, traitor_idx = list(), list()
+                # if self.n_honest > 0:
+                #     honest_idx = list(np.random.choice(np.arange(0, self.n_honest),
+                #                                        size=comm_honest,
+                #                                        p=weight_honest))
+                # if self.n_traitors > 0:
+                #     traitor_idx = list(np.random.choice(np.arange(self.n_honest, self.nprocs),
+                #                                         size=comm_traitors,
+                #                                         p=weight_traitors))
 
-                honest_idx, traitor_idx = list(), list()
-                if self.n_honest > 0:
-                    honest_idx = list(np.random.choice(np.arange(0, self.n_honest),
-                                                       size=comm_honest,
-                                                       p=weight_honest))
-                if self.n_traitors > 0:
-                    traitor_idx = list(np.random.choice(np.arange(self.n_honest, self.nprocs),
-                                                        size=comm_traitors,
-                                                        p=weight_traitors))
-
-                output('honest_idx = {}'.format(honest_idx))
-                output('traitor_idx = {}'.format(traitor_idx))
-                selection = honest_idx + traitor_idx
+                # output('honest_idx = {}'.format(honest_idx))
+                # output('traitor_idx = {}'.format(traitor_idx))
+                # selection = honest_idx + traitor_idx
                 self.committee = {self.ps_list[i]:selection.count(i) for i in set(selection)}
                 self.step = step
                 output('Finished Committee Sortition - STEP: {}'.format(step))
