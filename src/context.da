@@ -32,15 +32,32 @@ class Context():
         return self.__chain
 
     def print_chain(self):
-        k = 0
-        for block in self.__chain:
-            table = PrettyTable(field_names=['Value', 'PreviousHash', 'MyHash', 'Round', 'Timestamp'])
+
+        for block in self.__chain[:-1]:
+            table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp'])
             table.title = 'Block {}'.format(block.get_round())
             table.add_row([block.get_value(), block.get_prev_hash()[:7] if block.get_prev_hash() else None, H(block)[:7], block.get_round(), block.get_timestamp()])
 
             print(str(table))
-            k=k+1
-            if k<len(self.__chain):
-                for i in range(3):
-                    print("\t\t\t\t|")
-                print("\t\t\t\tV")
+            for i in range(3):
+                print("\t\t\t\t|")
+            print("\t\t\t\tV")
+
+        if self.__final_fork:
+            l = len(self.__chain[-1])
+            table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp']*l)
+            table.title = 'Fork Results at Block {}'.format(len(self.__chain)-1)
+            row = []
+            for block in self.__chain[-1]:
+                row += [block.get_value(), block.get_prev_hash()[:7] if block.get_prev_hash() else None, H(block)[:7], block.get_round(), block.get_timestamp()]
+            table.add_row(row)
+            print(str(table))
+        else:
+            block = self.__chain[-1]
+            table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp'])
+            table.title = 'Block {}'.format(block.get_round())
+            table.add_row(
+                [block.get_value(), block.get_prev_hash()[:7] if block.get_prev_hash() else None, H(block)[:7],
+                 block.get_round(), block.get_timestamp()])
+
+            print(str(table))
