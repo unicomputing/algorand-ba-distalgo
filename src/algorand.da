@@ -3,14 +3,14 @@ from context import Context
 from block import Block
 from H import H
 import time
-import parameters as params
+from parameters import Parameters
 import random
 import argparse
 import math
 
 class User(process):
 
-    def setup(neighbours, ctrl, context, pbp = False, block_size=0):
+    def setup(neighbours, params, ctrl, context, pbp = False, block_size=0):
         self.neighbours = neighbours - {self}
         self.controller = ctrl
         self.context = context
@@ -520,6 +520,7 @@ def create_gossip_neighbours(users_list, my_id):
     return neighbours_set
 
 def main():
+    params = Parameters()
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--users', help='Number of users the algorand runs with', type=int, dest='nusers',
                         default=10)
@@ -569,9 +570,9 @@ def main():
                         help='Length of Chain to generate, cl = number of final blocks. If -1, continue indefinitely.',
                         dest='cl', default=5)
 
-    parser.add_argument('-ll', '--logger_level', type=int,
-                        help='The logger level, dl = output logger level',
-                        dest='logger_level', default=params.logger_level)
+    parser.add_argument('-ll', '--log_enable',
+                        help='Print Log Outputs for all processes',
+                        action='store_true', default=False, dest='log_enable')
 
     args = vars(parser.parse_args())
 
@@ -586,21 +587,21 @@ def main():
     params.tau_proposer = args['tau_proposer']
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
-    params.logger_level = args['logger_level']
+    params.logger_level = 20 if args['log_enable'] else 10
     byzantine_proposer = args['byzantine_proposer']
     block_size = min(args['block_size'], 3)
     pbp = args['pbp']
     cl = args['cl']
     context = initial_context()
     ps = new(User, num=n_users)
-    ctrl = new(Controller, (ps, params.lambda_block, context,
+    ctrl = new(Controller, (ps, params, context,
                             n_traitors, stake_traitors,
                             byzantine_proposer, pbp, None, block_size, cl))
 
     users_list = list(ps)
     for p in ps:
         neighbours_set = create_gossip_neighbours(users_list, p)
-        setup(p, (neighbours_set, ctrl, context, pbp, block_size))
+        setup(p, (neighbours_set, params, ctrl, context, pbp, block_size))
     start(ps)
     start(ctrl)
     await(received(('done',), from_=ctrl))

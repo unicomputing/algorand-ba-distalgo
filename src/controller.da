@@ -5,11 +5,11 @@ from H import H
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, pbp=False, monitor=None, block_size=0, chain_length=1):
+    def setup(processes, params, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, pbp=False, monitor=None, block_size=0, chain_length=1):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
-        self.lambda_t = lambda_t
+        # self.lambda_t = params.lambda_block
         self.context = context
         self.n_traitors = n_traitors
         self.n_honest = self.nprocs - n_traitors
@@ -201,7 +201,7 @@ class Controller(process):
 
             if await(False):
                 pass
-            elif timeout(lambda_t):
+            elif timeout(params.lambda_block):
                 pass
 
             send(('start_BA', round_number), to=self.ps)
