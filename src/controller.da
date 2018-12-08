@@ -1,6 +1,5 @@
 import numpy as np
 from block import Block
-import parameters as params
 from H import H
 
 class Controller(process):
@@ -9,7 +8,6 @@ class Controller(process):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
-        # self.lambda_t = params.lambda_block
         self.context = context
         self.n_traitors = n_traitors
         self.n_honest = self.nprocs - n_traitors
