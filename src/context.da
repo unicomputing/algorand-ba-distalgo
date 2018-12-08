@@ -6,6 +6,7 @@ class Context():
     def __init__(self):
         self.__last_block = None
         self.__first_block = None
+        self.__final_fork = None
 
     def add_block(self, block):
         if(not self.__last_block):
@@ -14,3 +15,6 @@ class Context():
 
     def prev_block(self):
         return self.__last_block
+
+    def forked_blocks(self, blocks: set):
+        self.__final_fork = blocks

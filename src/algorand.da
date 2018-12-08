@@ -28,6 +28,8 @@ class User(process):
 
         self.block_size = int(block_size*1024)  # in B
 
+        self.exit_condition = False
+
     def receive(msg=('YouAreTraitor',)):
         self.IAmTraitor = True
         output('I am a Traitor')
@@ -443,18 +445,27 @@ class User(process):
         else:
             return "TENTATIVE", BlockOfHash(hblock_star)
 
+    def receive(msg=('ExitCondition',)):
+        self.exit_condition = True
+
     def run():
-        self.highest_priority_block = (None, Block(None, self.curr_round_num, H(self.context.prev_block())))
-        await(received(('start_BA',), from_=self.controller))
-        # output('Highest Priority Block:\n\nProposer: {}\n\n{}\n'.format(self.highest_priority_block[0],
-        #                                                                 self.highest_priority_block[1]))
-        result = BA(self.context, 0, self.highest_priority_block[1])
-        output('Completed BA*')
 
-        send(('result', result), to=self.controller)
-        await(received(('Received result',), from_=self.controller))
+        while True:
+            self.highest_priority_block = (None, Block(None, self.curr_round_num, H(self.context.prev_block())))
+            await(self.exit_condition or received(('start_BA', self.curr_round_num), from_=self.controller))
+            if self.exit_condition:
+                break
+            # output('Highest Priority Block:\n\nProposer: {}\n\n{}\n'.format(self.highest_priority_block[0],
+            #                                                                 self.highest_priority_block[1]))
+            result = BA(self.context, self.curr_round_num, self.highest_priority_block[1])
+            self.context.add_block(result[1])
+            output('Completed BA*')
 
-        send(('done',), to=self.controller)
+            send(('result', result), to=self.controller)
+            await(received(('Received result',), from_=self.controller))
+            send(('done', self.curr_round_num), to=self.controller)
+            self.curr_round_num += 1
+
         output('terminating User ', self)
         # await(received(('done',), from_=parent()))
 
@@ -554,6 +565,10 @@ def main():
     parser.add_argument('-bl', '--block-size', help='Size of a block in Bytes (bl <= 3)', type=float, dest='block_size',
                         default=0)
 
+    parser.add_argument('-cl', '--chain-length', type=int,
+                        help='Length of Chain to generate, cl = number of final blocks. If -1, continue indefinitely.',
+                        dest='cl', default=5)
+
     args = vars(parser.parse_args())
 
     n_users = args['nusers']
@@ -570,11 +585,12 @@ def main():
     byzantine_proposer = args['byzantine_proposer']
     block_size = min(args['block_size'], 3)
     pbp = args['pbp']
+    cl = args['cl']
     context = initial_context()
     ps = new(User, num=n_users)
     ctrl = new(Controller, (ps, params.lambda_block, context,
                             n_traitors, stake_traitors,
-                            byzantine_proposer, pbp, None, block_size))
+                            byzantine_proposer, pbp, None, block_size, cl))
 
     users_list = list(ps)
     for p in ps:

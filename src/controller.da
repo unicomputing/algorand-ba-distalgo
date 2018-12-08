@@ -5,7 +5,7 @@ from H import H
 
 class Controller(process):
 
-    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, pbp=False, monitor=None, block_size=0):
+    def setup(processes, lambda_t, context, n_traitors, stake_traitors=0.33, byzantine_proposer=False, pbp=False, monitor=None, block_size=0, chain_length=1):
         self.nprocs = len(processes)
         self.ps = processes
         self.ps_list = list(processes)
@@ -39,6 +39,8 @@ class Controller(process):
         self.pbp = pbp
         self.byzantine_proposer = byzantine_proposer
         self.monitor = monitor
+
+        self.chain_length = chain_length
 
     def receive(msg=('Proposal', round_num, ps_id, block)):
         if round_num in self.proposed_blocks:
@@ -183,80 +185,89 @@ class Controller(process):
 
     def run():
 
-        initialize_stakes(0)
-        self.livenesscheck[0] = set()
         send(('YouAreTraitor',), to=self.traitors)
-        proposerSet = Sortition(self.num_proposers, 0, None, 'Proposer')
-        if self.byzantine_proposer and self.pbp:
-            max_prop_id = max(proposerSet)
-            send(('Propose', self.curr_round), to=proposerSet-{max_prop_id})
-            send(('ByzantinePropose', self.curr_round), to=max_prop_id)
-        else:
-            send(('Propose', self.curr_round), to=proposerSet)
-
-        if await(False):
-            pass
-        elif timeout(lambda_t):
-            pass
-
-        send(('start_BA', ) , to=self.ps)
-
-        await(each(p in ps, has=received(('done',), from_=p)))
-
-        output('Results:')
-        tentative_blocks = set(block for status, block in self.results.values() if status == 'TENTATIVE')
-        final_blocks = set(block for status, block in self.results.values() if status == 'FINAL')
-        tentative_users = dict()
-        final_users = dict()
-        for user, (status, block) in self.results.items():
-            if status == 'TENTATIVE':
-                if block in tentative_users:
-                    tentative_users[block].append(user)
-                else:
-                    tentative_users[block] = [user]
-            else:
-                if block in final_users:
-                    final_users[block].append(user)
-                else:
-                    final_users[block] = [user]
-
-        if len(tentative_blocks) == 0 and len(final_blocks) == 1:
-            output('Consensus Reached')
-            for x in final_blocks:
-                print('Final Block:\n{}'.format(x))
-        else:
-            output('Failed to reach consensus')
-            print('Tentative Blocks:')
-            for block in tentative_blocks:
-                print('List of users with this block: {}'.format(tentative_users[block]))
-                print(block)
-            print('Final Blocks:')
-            for block in final_blocks:
-                print('List of users with this block: {}'.format(final_users[block]))
-                print(block)
-
-        # Correctness Testing
-        print("\n Correctness Testing")
         agr, val, liv = True, True, True
-        total_blocks = set(tentative_blocks).union(set(final_blocks))
-        if len(total_blocks) != 1:
-            print('1) Agreement Violated')
-            agr = False
-            if len(self.livenesscheck[0]) != 0:
-                liv = False
-        else:
-            print('1) Agreement Satisfied')
-            for block in total_blocks:
-                if block in self.proposed_blocks[block.get_round()] or self.isEmptyBlock(block):
-                    print('2) Validity Satisfied')
-                else:
-                    print('2) Validity Violated')
-                    val = False
-            if len(self.livenesscheck[0]) == 0:
-                print('3) Liveness Satisfied\n')
+        round_number = 0
+        while round_number < self.chain_length and agr and liv and val:
+            initialize_stakes(round_number)
+            self.livenesscheck[round_number] = set()
+            proposerSet = Sortition(self.num_proposers, round_number, None, 'Proposer')
+            if self.byzantine_proposer and self.pbp:
+                max_prop_id = max(proposerSet)
+                send(('Propose', self.curr_round), to=proposerSet-{max_prop_id})
+                send(('ByzantinePropose', self.curr_round), to=max_prop_id)
             else:
-                print('3) Liveness Violated\n')
-                liv = False
+                send(('Propose', self.curr_round), to=proposerSet)
+
+            if await(False):
+                pass
+            elif timeout(lambda_t):
+                pass
+
+            send(('start_BA', round_number), to=self.ps)
+
+            await(each(p in ps, has=received(('done', round_number), from_=p)))
+
+            output('Results:')
+            tentative_blocks = set(block for status, block in self.results.values() if status == 'TENTATIVE')
+            final_blocks = set(block for status, block in self.results.values() if status == 'FINAL')
+            tentative_users = dict()
+            final_users = dict()
+            for user, (status, block) in self.results.items():
+                if status == 'TENTATIVE':
+                    if block in tentative_users:
+                        tentative_users[block].append(user)
+                    else:
+                        tentative_users[block] = [user]
+                else:
+                    if block in final_users:
+                        final_users[block].append(user)
+                    else:
+                        final_users[block] = [user]
+
+            if len(tentative_blocks) == 0 and len(final_blocks) == 1:
+                output('Consensus Reached')
+                for x in final_blocks:
+                    print('Final Block:\n{}'.format(x))
+            else:
+                output('Failed to reach consensus')
+                print('Tentative Blocks:')
+                for block in tentative_blocks:
+                    print('List of users with this block: {}'.format(tentative_users[block]))
+                    print(block)
+                print('Final Blocks:')
+                for block in final_blocks:
+                    print('List of users with this block: {}'.format(final_users[block]))
+                    print(block)
+
+            # Correctness Testing
+            print("\n Correctness Testing")
+            total_blocks = set(tentative_blocks).union(set(final_blocks))
+            if len(total_blocks) != 1:
+                self.context.forked_blocks(total_blocks)
+                print('1) Agreement Violated')
+                agr = False
+                if len(self.livenesscheck[round_number]) != 0:
+                    liv = False
+            else:
+                print('1) Agreement Satisfied')
+                for block in total_blocks:
+                    self.context.add_block(block)
+                    if block in self.proposed_blocks[block.get_round()] or self.isEmptyBlock(block):
+                        print('2) Validity Satisfied')
+                    else:
+                        print('2) Validity Violated')
+                        val = False
+                if len(self.livenesscheck[round_number]) == 0:
+                    print('3) Liveness Satisfied\n')
+                else:
+                    print('3) Liveness Violated\n')
+                    liv = False
+
+            round_number += 1
+
+        send(('ExitCondition',), to=self.ps)
+
         send(('correctness', agr, val, liv, len(final_blocks) == 1), to=monitor or parent())
         send(('done',), to=parent())
 

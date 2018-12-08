@@ -2,6 +2,7 @@
 # The Block metadata is Implemented as per section 8.1 in the paper.
 import datetime
 from prettytable import PrettyTable
+from H import H
 
 class Block(object):
     def __init__(self, x, round_num=None, prev_hash=None, timestamp=None):
@@ -42,9 +43,9 @@ class Block(object):
 
     def __str__(self):
 
-        table = PrettyTable(field_names=['Value', 'PreviousHash', 'Round', 'Timestamp'])
+        table = PrettyTable(field_names=['Value', 'PreviousHash', 'MyHash', 'Round', 'Timestamp'])
         table.title = 'Block {}'.format(self.__round)
-        table.add_row([self.get_value(), self.__prev_hash[:7], self.__round, self.__timestamp])
+        table.add_row([self.get_value(), self.__prev_hash[:7], H(self)[:7], self.__round, self.__timestamp])
 
         return str(table)
         # return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\

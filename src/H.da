@@ -1,9 +1,8 @@
 import pickle
 import hashlib
-from block import Block
 
 
-def H(block:Block = None):
+def H(block=None):
     """
         Computes a hash for Block, as specified in Algorithm 3,4,6,7, Page 8-9, Gilad et. al - Algorand.
     This hash value acts as the unique reference to a Block, when finding consensus for Blocks, rather than
