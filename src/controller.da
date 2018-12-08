@@ -270,4 +270,5 @@ class Controller(process):
 
         send(('correctness', agr, val, liv, len(final_blocks) == 1), to=monitor or parent())
         send(('done',), to=parent())
+        self.context.print_chain()
 
