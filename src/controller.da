@@ -265,8 +265,9 @@ class Controller(process):
             round_number += 1
 
         send(('ExitCondition',), to=self.ps)
+        self.context.print_chain()
 
         send(('correctness', agr, val, liv, len(final_blocks) == 1), to=monitor or parent())
         send(('done',), to=parent())
-        self.context.print_chain()
+
 
