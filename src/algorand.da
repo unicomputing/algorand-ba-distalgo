@@ -519,10 +519,10 @@ def main():
     parser.add_argument('-st', '--stake-traitors', help='Sum of fractions of stake held by all traitors', type=float,
                         dest='stake_traitors', default=0.33)
 
-    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=int, dest='lambda_block',
+    parser.add_argument('-lb', '--lambda-block', help='Timeout for receiving a block', type=float, dest='lambda_block',
                         default=params.lambda_block)
 
-    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA* step', type=int, dest='lambda_step',
+    parser.add_argument('-ls', '--lambda-step', help='Timeout for BA* step', type=float, dest='lambda_step',
                         default=params.lambda_step)
 
     parser.add_argument('-Tf', '--t_final', help='threshold of tau final for BA*', type=float, dest='T_final',
