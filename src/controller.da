@@ -34,8 +34,8 @@ class Controller(process):
         self.traitors = {self.ps_list[i] for i in tr}
         self.honest_users = self.ps - self.traitors
         self.ps_list = list(self.honest_users) + list(self.traitors)
-        output('Honest: {}'.format(self.honest_users))
-        output('Traitors: {}'.format(self.traitors))
+        output('Honest: {}'.format(self.honest_users), level=params.logger_level)
+        output('Traitors: {}'.format(self.traitors), level=params.logger_level)
         self.pbp = pbp
         self.byzantine_proposer = byzantine_proposer
         self.monitor = monitor
@@ -104,7 +104,7 @@ class Controller(process):
             assert self.step is None or type(step) is str or type(self.step) is str or self.step == step or self.step == step - 1, \
                 '[controller.da] Sortition generated committee for step {}, but curr step is {}'.format(self.step, step)
             if self.step is None or self.step != step or self.step < step:
-                output('Committee Sortition Requirements Satisfied')
+                output('Committee Sortition Requirements Satisfied', level=params.logger_level)
                 # selection = list(np.random.choice(np.arange(0, self.nprocs), size=num_role, replace=True, p=self.W[round]))
                 comm_traitors = int(num_role*self.stake_traitors)
                 weight_traitors = np.array(self.W[round][self.n_honest:]) / sum(self.W[round][self.n_honest:])
@@ -121,13 +121,13 @@ class Controller(process):
                                                         size=comm_traitors,
                                                         p=weight_traitors))
 
-                output('honest_idx = {}'.format(honest_idx))
-                output('traitor_idx = {}'.format(traitor_idx))
+                output('honest_idx = {}'.format(honest_idx), level=params.logger_level)
+                output('traitor_idx = {}'.format(traitor_idx), level=params.logger_level)
                 selection = honest_idx + traitor_idx
                 self.committee = {self.ps_list[i]:selection.count(i) for i in set(selection)}
                 self.step = step
-                output('Finished Committee Sortition - STEP: {}'.format(step))
-                output('Committee at STEP {} = {}'.format(step, self.committee))
+                output('Finished Committee Sortition - STEP: {}'.format(step), level=params.logger_level)
+                output('Committee at STEP {} = {}'.format(step, self.committee), level=params.logger_level)
             return self.committee
 
         elif role.lower() in 'proposers':
@@ -180,7 +180,7 @@ class Controller(process):
             traitor_stakes = distribute_stakes(self.n_traitors, self.stake_traitors)
 
             self.W[round_num] = honest_stakes + traitor_stakes
-            output('Stakes: {}'.format({self.ps_list[i]:self.W[round_num][i] for i in range(0, self.nprocs)}))
+            output('Stakes: {}'.format({self.ps_list[i]:self.W[round_num][i] for i in range(0, self.nprocs)}), level=params.logger_level)
         return self.W[round_num]
 
     def run():
@@ -208,7 +208,7 @@ class Controller(process):
 
             await(each(p in ps, has=received(('done', round_number), from_=p)))
 
-            output('Results:')
+            output('Results:', level=params.logger_level)
             tentative_blocks = set(block for status, block in self.results.values() if status == 'TENTATIVE')
             final_blocks = set(block for status, block in self.results.values() if status == 'FINAL')
             tentative_users = dict()
@@ -226,11 +226,11 @@ class Controller(process):
                         final_users[block] = [user]
 
             if len(tentative_blocks) == 0 and len(final_blocks) == 1:
-                output('Consensus Reached')
+                output('Consensus Reached', level=params.logger_level)
                 for x in final_blocks:
                     print('Final Block:\n{}'.format(x))
             else:
-                output('Failed to reach consensus')
+                output('Failed to reach consensus', level=params.logger_level)
                 print('Tentative Blocks:')
                 for block in tentative_blocks:
                     print('List of users with this block: {}'.format(tentative_users[block]))

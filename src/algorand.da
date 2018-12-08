@@ -32,7 +32,7 @@ class User(process):
 
     def receive(msg=('YouAreTraitor',)):
         self.IAmTraitor = True
-        output('I am a Traitor')
+        output('I am a Traitor', level=params.logger_level)
 
     def receive(msg=('Propose', round_num)):
         block = Block(str(self)+'A'*self.block_size, round_num, H(self.context.prev_block()))
@@ -111,12 +111,12 @@ class User(process):
 
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
-        # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
+        # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)), level=params.logger_level)
         if not sent(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
-            # output('Forwarding CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)))
+            # output('Forwarding CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)), level=params.logger_level)
             send(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
         # else:
-        #     output('Already Sent CommitteeGossip Once. Not Sending Again.')
+        #     output('Already Sent CommitteeGossip Once. Not Sending Again.', level=params.logger_level)
 
     def receive(msg=('Proposal', round_num, ps_id, block), from_=p):
         if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
@@ -226,10 +226,10 @@ class User(process):
         votes = BlindSortition(round, step, role="committee")
         if votes > 0:
             if self.IAmTraitor:
-                output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes))
+                output('I am a Traitor Committee Member at step {} with {} votes'.format(step, votes), level=params.logger_level)
                 ByzantineGossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
             else:
-                output('I am a Committee Member at step {} with {} votes'.format(step, votes))
+                output('I am a Committee Member at step {} with {} votes'.format(step, votes), level=params.logger_level)
                 Gossip(('CommitteeGossip', round, step, self, H(context.prev_block()), value))
 
     def CountVotes(context, round_num, step, T_value, tau_value, lambda_value):
@@ -275,10 +275,10 @@ class User(process):
                     counts[value] = votes
 
                 if counts[value] > T_value * tau_value:
-                    output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]))
+                    output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]), level=params.logger_level)
                     return value
             if time.time() > start + lambda_value:
-                output('CountVotes at step {} Reached TIMEOUT\n{}'
+                output('CountVotes at step {} Reached TIMEOUT\n{}, level=params.logger_level'
                        .format(step, {hval[:10]:num for hval,num in counts.items()}))
                 return "TIMEOUT"
 
@@ -337,10 +337,10 @@ class User(process):
             r = CountVotes(context, round, step, params.T_step, params.tau_step, params.lambda_step)
             if r == "TIMEOUT":
                 if CommonCoin() == 0:
-                    output('[BinaryBA*] CommonCoin returned 0, so using block_hash')
+                    output('[BinaryBA*] CommonCoin returned 0, so using block_hash', level=params.logger_level)
                     r = block_hash
                 else:
-                    output('[BinaryBA*] CommonCoin returned 1, so using empty_hash')
+                    output('[BinaryBA*] CommonCoin returned 1, so using empty_hash', level=params.logger_level)
                     r = empty_hash
 
             step = step+1
@@ -367,20 +367,20 @@ class User(process):
         @return: Returns the hash of the block that has been chosen.
         @rtype: L{H(Block)}
         """
-        output('Reduction')
+        output('Reduction', level=params.logger_level)
         CommitteeVote(context, round, "REDUCTION_ONE", hblock)
-        output('After CommitteeVote REDUCTION_ONE')
+        output('After CommitteeVote REDUCTION_ONE', level=params.logger_level)
         hblock1 = CountVotes(context, round, "REDUCTION_ONE", params.T_step, params.tau_step,
                              params.lambda_block + params.lambda_step)
-        output('After CountVotes for REDUCTION_ONE')
+        output('After CountVotes for REDUCTION_ONE', level=params.logger_level)
         empty_hash = getEmptyBlockHash(round, H(context.prev_block()))
         if hblock1 == "TIMEOUT":
             CommitteeVote(context, round, "REDUCTION_TWO", empty_hash)
         else:
             CommitteeVote(context, round, "REDUCTION_TWO", hblock1)
-        output('After CommitteeVote REDUCTION_TWO')
+        output('After CommitteeVote REDUCTION_TWO', level=params.logger_level)
         hblock2 = CountVotes(context, round, "REDUCTION_TWO", params.T_step, params.tau_step, params.lambda_step)
-        output('After CountVotes for REDUCTION_TWO')
+        output('After CountVotes for REDUCTION_TWO', level=params.logger_level)
         if hblock2 == "TIMEOUT":
             return empty_hash
         return hblock2
@@ -433,13 +433,13 @@ class User(process):
         @return: tuple containing status of consensus and the block which has been agreed upon.
         @rtype: C{str}, L{Block}
         """
-        output('Starting BA* with block {}'.format(block.get_value()))
+        output('Starting BA* with block {}'.format(block.get_value()), level=params.logger_level)
         hblock = Reduction(context, round, H(block))
-        output('Reduction Done')
+        output('Reduction Done', level=params.logger_level)
         hblock_star = BinaryBA(context, round, hblock)
-        output('BinaryBA* Done')
+        output('BinaryBA* Done', level=params.logger_level)
         r = CountVotes(context, round, "FINAL", params.T_final, params.tau_final, params.lambda_step)
-        output('After CountVotes for FINAL')
+        output('After CountVotes for FINAL', level=params.logger_level)
         if hblock_star == r:
             return "FINAL", BlockOfHash(hblock_star)
         else:
@@ -455,18 +455,18 @@ class User(process):
             await(self.exit_condition or received(('start_BA', self.curr_round_num), from_=self.controller))
             if self.exit_condition:
                 break
-            # output('Highest Priority Block:\n\nProposer: {}\n\n{}\n'.format(self.highest_priority_block[0],
+            # output('Highest Priority Block:\n\nProposer: {}\n\n{}\n'.format(self.highest_priority_block[0], level=params.logger_level,
             #                                                                 self.highest_priority_block[1]))
             result = BA(self.context, self.curr_round_num, self.highest_priority_block[1])
             self.context.add_block(result[1])
-            output('Completed BA*')
+            output('Completed BA*', level=params.logger_level)
 
             send(('result', result), to=self.controller)
             await(received(('Received result',), from_=self.controller))
             send(('done', self.curr_round_num), to=self.controller)
             self.curr_round_num += 1
 
-        output('terminating User ', self)
+        output('terminating User ', self, level=params.logger_level)
         # await(received(('done',), from_=parent()))
 
 def initial_context():
@@ -516,7 +516,7 @@ def create_gossip_neighbours(users_list, my_id):
     for _ in range(num_neighbours):
         neighbours_set.add(users_list[i])
         i = (i + n_search) % n_users
-    # output('Neighbours of {} = {}'.format(my_id, neighbours_set))
+    # output('Neighbours of {} = {}'.format(my_id, neighbours_set), level=params.logger_level)
     return neighbours_set
 
 def main():
@@ -569,6 +569,10 @@ def main():
                         help='Length of Chain to generate, cl = number of final blocks. If -1, continue indefinitely.',
                         dest='cl', default=5)
 
+    parser.add_argument('-ll', '--logger_level', type=int,
+                        help='The logger level, dl = output logger level',
+                        dest='logger_level', default=params.logger_level)
+
     args = vars(parser.parse_args())
 
     n_users = args['nusers']
@@ -582,6 +586,7 @@ def main():
     params.tau_proposer = args['tau_proposer']
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
+    params.logger_level = args['logger_level']
     byzantine_proposer = args['byzantine_proposer']
     block_size = min(args['block_size'], 3)
     pbp = args['pbp']
