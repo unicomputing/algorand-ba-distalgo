@@ -76,10 +76,12 @@ class User(process):
         @return:
         @rtype:
         """
-        if await(self.msg_delay > 0 and False):
-            pass
-        elif timeout(self.localrandom.uniform(0, self.msg_delay)):
-            pass
+        time_delay = self.localrandom.uniform(0, self.msg_delay)
+        a = 1
+        if await(self.msg_delay == 0):
+            a = 1
+        elif timeout(time_delay):
+            a = 1
         if self.localrandom.random() >= self.loss_rate:
             if to is None:
                 send(msg, to=self.neighbours)
