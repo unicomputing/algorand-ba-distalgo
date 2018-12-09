@@ -8,7 +8,6 @@
 ### Installing all the required python packages
 Install all the dependencies using pip:
 
-    cd algorand/src
     pip install -r requirements.txt
 # Usage
     python3 -m da algorand.da [-h] [-u NUSERS] [-tr NTRAITORS] [-st STAKE_TRAITORS]
