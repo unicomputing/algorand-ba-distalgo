@@ -17,6 +17,8 @@ class Context():
         Adds the block to the chain.
         @param block: A tuple containing the status of the block and the block-('Tentative', Block) or ('Final', Block).
         @type block: L{tuple{L{str}, L{Block}}}
+        @return: None
+        @rtype: C{NoneType}
         """
         self.__round_number += 1
         if(not self.__last_block):
@@ -36,6 +38,8 @@ class Context():
         When a fork is created that context has the knowledge of all the forks.
         @param blocks: Set of Blocks that created the fork.
         @type blocks: L{Set}
+        @return: None
+        @rtype: C{NoneType}
         """
         self.__chain.append(blocks)
         self.__final_fork = True
@@ -49,11 +53,18 @@ class Context():
         return self.__final_fork
 
     def get_chain(self):
+        """
+        The chain consisting all the proposed blocks.
+        @return: The chain of the context
+        @rtype: L{list}
+        """
         return self.__chain
 
     def print_chain(self):
         """
         Helper function to print the chain of proposed blocks in each round.
+        @return: None
+        @rtype: C{NoneType}
         """
         for status, block in self.__chain[:-1]:
             table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp'])
