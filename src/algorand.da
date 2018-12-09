@@ -278,8 +278,8 @@ class User(process):
                     output('CountVotes at step {} Selected {} with {} votes'.format(step, value, counts[value]), level=params.logger_level)
                     return value
             if time.time() > start + lambda_value:
-                output('CountVotes at step {} Reached TIMEOUT\n{}, level=params.logger_level'
-                       .format(step, {hval[:10]:num for hval,num in counts.items()}))
+                output('CountVotes at step {} Reached TIMEOUT\n{}'
+                       .format(step, {hval[:10]:num for hval,num in counts.items()}), level=params.logger_level)
                 return "TIMEOUT"
 
 

@@ -190,7 +190,7 @@ class Controller(process):
             initialize_stakes(round_number)
             self.livenesscheck[round_number] = set()
             proposerSet = Sortition(self.num_proposers, round_number, None, 'Proposer')
-            if self.byzantine_proposer and self.pbp:
+            if self.byzantine_proposer and not self.pbp:
                 max_prop_id = max(proposerSet)
                 send(('Propose', self.curr_round), to=proposerSet-{max_prop_id})
                 send(('ByzantinePropose', self.curr_round), to=max_prop_id)
