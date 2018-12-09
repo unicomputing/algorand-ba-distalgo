@@ -191,7 +191,7 @@ class Controller(process):
         agr, val, liv = True, True, True
         round_number = 0
         while round_number < self.chain_length and agr and liv and val:
-            output('Starting Next Round')
+            output('Starting Next Round', level=params.logger_level)
             initialize_stakes(round_number)
             self.livenesscheck[round_number] = set()
             proposerSet = Sortition(self.num_proposers, round_number, None, 'Proposer')
@@ -201,14 +201,14 @@ class Controller(process):
                 send(('ByzantinePropose', self.curr_round), to=max_prop_id)
             else:
                 send(('Propose', self.curr_round), to=proposerSet)
-            output('Notified Proposers ---- lambda_block = {}'.format(params.lambda_block))
+            output('Notified Proposers ---- lambda_block = {}'.format(params.lambda_block), level=params.logger_level)
 
             if await(False):
                 pass
             elif timeout(params.lambda_block):
                 pass
 
-            output('Sending start_BA')
+            output('Sending start_BA', level=params.logger_level)
             send(('start_BA', round_number), to=self.ps)
 
             await(each(p in ps, has=received(('done', round_number), from_=p)))

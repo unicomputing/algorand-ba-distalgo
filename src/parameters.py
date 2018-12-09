@@ -8,3 +8,5 @@ class Parameters:
     tau_final = 6
     max_steps = 50
     logger_level = 20
+    loss_rate = 0
+    msg_delay = 0
