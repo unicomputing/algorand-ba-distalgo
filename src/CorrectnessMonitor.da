@@ -1,6 +1,6 @@
 from controller import Controller
 from algorand import User, create_gossip_neighbours, initial_context
-import parameters as params
+from parameters import Parameters
 import csv
 import numpy as np
 import time
@@ -50,14 +50,14 @@ class CorrectnessMonitor(process):
 
 
 def main():
-
+    params = Parameters()
     standard_values = [30, 5, 0.33, 10, 3, 3]
     values = [np.linspace(20, 50, 6), np.linspace(0, 15, 5), np.linspace(0, 0.36, 6), np.linspace(5, 15, 5),
               np.linspace(0.1, 4, 6), np.linspace(0.5, 4, 6)]
     context = initial_context()
     monitor = new(CorrectnessMonitor,())
     start(monitor)
-    for i in range(3,len(standard_values)):
+    for i in range(0,len(standard_values)):
         n_users, n_traitors, stake_traitors, params.tau_step, params.lambda_block, params.lambda_step = standard_values
         for val in values[i]:
             n_users = standard_values[0] if i != 0 else int(val)
@@ -71,13 +71,13 @@ def main():
                   params.lambda_step), to=monitor)
             for k in range(3):
                 ps = new(User, num=n_users)
-                ctrl = new(Controller, (ps, params.lambda_block, context,
+                ctrl = new(Controller, (ps, params, context,
                                         n_traitors, stake_traitors,
                                         False, True, monitor))
                 users_list = list(ps)
                 for p in ps:
                     neighbours_set = create_gossip_neighbours(users_list, p)
-                    setup(p, (neighbours_set, ctrl, context, True))
+                    setup(p, (neighbours_set, params, ctrl, context, True))
                 start(ps)
                 start(ctrl)
                 await(received(('done',), from_=ctrl))
