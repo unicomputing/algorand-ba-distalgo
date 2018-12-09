@@ -12,24 +12,58 @@ class Block(object):
         self.__timestamp = str(datetime.datetime.now()) if timestamp is None and x is not None else timestamp
 
     def get_value(self):
+        """
+        Gets the value stored in a Block. This value is assumed to be a string or a list.
+        @return: The first 20 or less index values of the value stored in a block.
+        @rtype: C{str}
+        """
         if self.__val is not None and len(self.__val) > 20:
             x = self.__val[:20]
             return x
         return self.__val
 
     def get_round(self):
+        """
+        Gets the current round number in this run of Algorand.
+        @return: Current round number
+        @rtype: C{int}
+        """
         return self.__round
 
     def set_prev_hash(self, hash):
+        """
+        Sets the previous block's hash for this block.
+        @param hash: A hash value, which is a 256 byte string
+        @type hash: L{H{Block}}
+        @return: None
+        @rtype: C{NoneType}
+        """
         self.__prev_hash = hash
 
     def get_prev_hash(self):
+        """
+        Gets the hash of the last block, with respect to this block.
+        @return: A hash value, which is a 256 byte string
+        @rtype: C{str}
+        """
         return self.__prev_hash
 
     def get_timestamp(self):
+        """
+        Returns the timestamp of this block origin.
+        @return: A string containing date and time
+        @rtype: C{str}
+        """
         return self.__timestamp
 
     def __eq__(self, other):
+        """
+        Equivalence check for one Block with another Block
+        @param other: A block with which comparison is to be done
+        @type other: L{Block}
+        @return: True or False
+        @rtype: C{bool}
+        """
         if self is other:
             return True
         elif type(self) != type(other):
@@ -39,10 +73,19 @@ class Block(object):
                     and self.get_prev_hash() == other.get_prev_hash() and self.get_timestamp() == other.get_timestamp())
 
     def __hash__(self):
+        """
+        Returns a hash of this block for storage in set/dict
+        @return: Hash value
+        @rtype: C{int}
+        """
         return hash(( self.__val, self.__prev_hash, self.__round, self.__timestamp))
 
     def __str__(self):
-
+        """
+        Returns string form of Block
+        @return: A tabular form of block contents
+        @rtype: C{str}
+        """
         table = PrettyTable(field_names=['Value', 'PreviousHash', 'MyHash', 'Round', 'Timestamp'])
         table.title = 'Block {}'.format(self.__round)
         table.add_row([self.get_value(), self.__prev_hash[:7], H(self)[:7], self.__round, self.__timestamp])

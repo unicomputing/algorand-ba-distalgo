@@ -74,10 +74,25 @@ Install all the dependencies using pip:
     python -m da algorand.da -tr 5 -st 0.5
     
     
-# Correctness Testing
+# Correctness and Performance Testing
+Monitor.da runs correctness and performance tests to check Safety, Liveness and Validity on the algorand.da in the following cases
+* Checks correctness with various number of users.
+* Checks correctness with various number of traitors.
+* Checks correctness with various stakes of traitors.
+* Checks correctness with various timeout parameters.
 
+The Monitor runs the tests for combination of following set of parameters
+* No.of Users range 20-50
+* No.of traitors range 0-17
+* Traitor stakes range 0-0.36
+* No.of committee members in step range from 5-20
+* Block size range from approximately 0-3Kb
 
-# Performance Testing
+Run the test as below
+
+    python3 -m da Monitor.da
+    
+The results of the tests will be saved in correctness.csv and performance.csv respectively.
 
 
 
