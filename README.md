@@ -3,7 +3,7 @@
 
 # Prerequisites
 * Python 3.5 or Python 3.6
-* Mac/Windows or Linux environment
+* MacOS, Windows or Linux environment
 
 ### Installing all the required python packages
 Install all the dependencies using pip:
@@ -37,8 +37,7 @@ Install all the dependencies using pip:
                         Force highest-priority proposer to be malicious
                         regardless of stake-traitors `default = False`\
   `-pbp, --prevent-byzantine-proposer`
-                        Prevent any proposer from being malicious (overrides
-                        byzantine-proposer) `default = False `
+                        Prevent any proposer from being malicious `default = False `\
   `-bl , --block-size`
                         Size of a block in Bytes (bl <= 3) `default = 0`\
   `-cl , --chain-length`
@@ -75,10 +74,10 @@ Install all the dependencies using pip:
     
 # Correctness and Performance Testing
 Monitor.da runs correctness and performance tests to check Safety, Liveness and Validity on the algorand.da in the following cases
-* Checks correctness with various number of users.
-* Checks correctness with various number of traitors.
-* Checks correctness with various stakes of traitors.
-* Checks correctness with various timeout parameters.
+* Checks correctness with increasing number of users.
+* Checks correctness with increasing number of traitors.
+* Checks correctness with increasing stakes of traitors.
+* Checks correctness with increasing timeout value.
 
 The Monitor runs the tests for combination of following set of parameters
 * No.of Users range 20-50
@@ -92,9 +91,3 @@ Run the test as below
     python3 -m da Monitor.da
     
 The results of the tests will be saved in correctness.csv and performance.csv respectively.
-
-
-
-
-
- 
