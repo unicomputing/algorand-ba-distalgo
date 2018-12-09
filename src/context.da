@@ -7,32 +7,54 @@ class Context():
     def __init__(self):
         self.__last_block = None
         self.__first_block = None
+        self.__round_number = 0
         self.__final_fork = False
         self.__block_of_hash = dict()
         self.__chain = []
 
     def add_block(self, block):
+        """
+        Adds the block to the chain.
+        @param block: A tuple containing the status of the block and the block-('Tentative', Block) or ('Final', Block).
+        @type block: L{tuple{L{str}, L{Block}}}
+        """
+        self.__round_number += 1
         if(not self.__last_block):
             self.__first_block = block[1]
         self.__last_block = block[1]
         self.__chain.append(block)
         self.__block_of_hash[H(block)] = block
 
+    def round_number(self):
+        return self.__round_number
+
     def prev_block(self):
         return self.__last_block
 
     def set_forked_blocks(self, blocks: set):
+        """
+        When a fork is created that context has the knowledge of all the forks.
+        @param blocks: Set of Blocks that created the fork.
+        @type blocks: L{Set}
+        """
         self.__chain.append(blocks)
         self.__final_fork = True
 
     def is_forked(self):
+        """
+        Returns if the context is forked.
+        @return: True or False
+        @rtype: L{Boolean}
+        """
         return self.__final_fork
 
     def get_chain(self):
         return self.__chain
 
     def print_chain(self):
-
+        """
+        Helper function to print the chain of proposed blocks in each round.
+        """
         for status, block in self.__chain[:-1]:
             table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp'])
             table.title = 'Block {} - {}'.format(block.get_round(), status)
