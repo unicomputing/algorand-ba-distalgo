@@ -1,13 +1,22 @@
 # Implementing Algorand Byzantine agreement BA* in DistAlgo
 <https://sites.google.com/a/stonybrook.edu/sbcs535/projects/algorand-ba-distalgo>
 
-1. Usage \
- <b>python -m da algorand.da [-h] [-u NUSERS] [-tr NTRAITORS] [-st STAKE_TRAITORS]
+# Prerequisites
+* Python 3.5 and above
+* Mac/Windows or Linux environment
+
+### Installing all the required python packages
+Install all the dependencies using pip:
+
+    cd algorand/src
+    pip3 install -r requirements.txt
+# Usage
+    python3 -m da algorand.da [-h] [-u NUSERS] [-tr NTRAITORS] [-st STAKE_TRAITORS]
                    [-lb LAMBDA_BLOCK] [-ls LAMBDA_STEP] [-Tf T_FINAL]
                    [-Ts T_STEP] [-ts TAU_STEP] [-tp TAU_PROPOSER]
                    [-tf TAU_FINAL] [-ms MAX_STEPS] [-bp] [-pbp]
                    [-bl BLOCK_SIZE] [-cl CL] [-ll]
-                    </b>
+                    
   -h, --help            show the help message and exit \
   -u NUSERS, --users NUSERS
                         Number of users the algorand runs with, default = 10\
@@ -36,7 +45,7 @@
                         regardless of stake-traitors default = False\
   -pbp, --prevent-byzantine-proposer
                         Prevent any proposer from being malicious (overrides
-                        byzantine-proposer) default = False \  
+                        byzantine-proposer) default = False  
   -bl BLOCK_SIZE, --block-size BLOCK_SIZE
                         Size of a block in Bytes (bl <= 3) default = 0\
   -cl CL, --chain-length CL
@@ -45,30 +54,36 @@
   -ll, --log_enable     Print Log Outputs for all processes default = False
   
   
-2. Sample algorand run for 1 round and 10 users
+### Sample algorand run for 1 round and 10 users
 
-<b>python -m da algorand.da -u 10 -cl 1</b>
+    python3 -m da algorand.da -u 10 -cl 1
 
-3. Sample algorand run for 3 rounds (i.e blockchain of 3 blocks)
+### Sample algorand run for 3 rounds (i.e blockchain of 3 blocks)
 
-<b>python -m da algorand.da -cl 3</b>
+    python3 -m da algorand.da -cl 3
 
-4. Sample algroand run with 5 traitors and 20 user
+### Sample algroand run with 5 traitors and 20 user
 
-<b>python -m da algorand.da -u 20 -tr 5</b>
+    python3 -m da algorand.da -u 20 -tr 5
 
-5. Sample algorand run forcing the highest priority proposer to be the traitor 
+### Sample algorand run forcing the highest priority proposer to be the traitor 
 
-<b>python -m da algorand.da -u 10 -bp</b>
+    python3 -m da algorand.da -u 10 -bp
 
-6. Sample algorand run with 5 traitors but preventing the highest priority proposer from being a traitor
+### Sample algorand run with 5 traitors but preventing the highest priority proposer from being a traitor
 
-<b>python -m da algorand.da -tr 5 -pbp</b> \
-(Note: pbp takes precedence over bp) 
+    python3 -m da algorand.da -tr 5 -pbp
+    (Note: pbp takes precedence over bp) 
 
-7. Sample algorand run with all the traitor stakes ccombined to be 0.5
+### Sample algorand run with all the traitor stakes ccombined to be 0.5
 
-<b>python -m da algorand.da -tr 5 -st 0.5</b>
+    python3 -m da algorand.da -tr 5 -st 0.5
+    
+    
+# Correctness Testing
+
+
+# Performance Testing
 
 
 
