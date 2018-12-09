@@ -130,7 +130,7 @@ class User(process):
 
     def receive(msg=('Proposal', round_num, ps_id, block), from_=p):
         if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
-            output('Received Proposal: {}'.format(('Proposal', round_num, ps_id, block)))
+            output('Received Proposal: {}'.format(('Proposal', round_num, ps_id, block)), level=params.logger_level)
             block_hash = H(block)
             if block_hash not in self.blockofhash:
                 self.blockofhash[block_hash] = block
