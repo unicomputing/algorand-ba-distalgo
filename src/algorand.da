@@ -50,6 +50,12 @@ class User(process):
         ByzantineGossip(('Proposal', self.curr_round_num, self, block))
 
     def Proposal(block: Block):
+        """
+        Propose the block to the neighbours using L{Gossip} or L{ByzantineGossip} functions.
+
+        @param block: The block, which the user is going to propose.
+        @type block: L{Block}
+        """
         block_hash = H(block)
         if block_hash not in self.blockofhash:
             self.blockofhash[block_hash] = block
@@ -65,16 +71,10 @@ class User(process):
 
         Sends a message to all its neighbours.
 
-        @param round_num: The current round of the BA.
-        @type round_num: C{int}
-        @param step: The current step of BA that is in progress.
-        @type step: C{int}
-        @param h_last_block: The hash of the previously selected block in the ledger.
-        @type h_last_block: L{H(Block)}
-        @param value: The hash value of the current proposed block
-        @type value: L{H(Block)}
-        @return:
-        @rtype:
+        @param msg: The current round of the BA.
+        @type msg: C{int}
+        @param to: The current step of BA that is in progress.
+        @type to: C{int}
         """
         if to is None:
             send(msg, to=self.neighbours)
@@ -82,7 +82,13 @@ class User(process):
             send(msg, to=to)
 
     def ByzantineGossip(msg, to=None):
+        """
 
+        @param to:
+        @type to:
+        @return:
+        @rtype:
+        """
         if msg[0] == 'Proposal':
             tag, round_num, ps_id, block = msg
             mal_1 = Block(block.get_value() + "_mal_1", block.get_round(), block.get_prev_hash(), block.get_timestamp())
@@ -463,8 +469,6 @@ class User(process):
             await(self.exit_condition or received(('start_BA', self.curr_round_num), from_=self.controller))
             if self.exit_condition:
                 break
-            # output('Highest Priority Block:\n\nProposer: {}\n\n{}\n'.format(self.highest_priority_block[0], level=params.logger_level,
-            #                                                                 self.highest_priority_block[1]))
             result = BA(self.context, self.curr_round_num, self.highest_priority_block[1])
             self.context.add_block(result)
             output('Completed BA*', level=params.logger_level)
@@ -525,7 +529,6 @@ def create_gossip_neighbours(users_list, my_id):
     for _ in range(num_neighbours):
         neighbours_set.add(users_list[i])
         i = (i + n_search) % n_users
-    # output('Neighbours of {} = {}'.format(my_id, neighbours_set), level=params.logger_level)
     return neighbours_set
 
 def main():
