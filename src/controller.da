@@ -194,10 +194,10 @@ class Controller(process):
         while round_number < self.chain_length and agr and liv and val:
 
             output('Starting Next Round', level=params.logger_level)
-            initialize_stakes(round_number)
 
             process_start = time.process_time()
             elapsed_start = time.perf_counter()
+            initialize_stakes(round_number)
 
             self.livenesscheck[round_number] = set()
             proposerSet = Sortition(self.num_proposers, round_number, None, 'Proposer')
