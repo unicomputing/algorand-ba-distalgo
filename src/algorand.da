@@ -472,7 +472,7 @@ class User(process):
             send(('result', result), to=self.controller)
             await(received(('Received result',), from_=self.controller))
             send(('done', self.curr_round_num), to=self.controller)
-            output('Ending round {}'.format(self.curr_round_num))
+            output('Ending round {}'.format(self.curr_round_num), level=params.logger_level)
             self.curr_round_num += 1
 
         output('terminating User ', self, level=params.logger_level)

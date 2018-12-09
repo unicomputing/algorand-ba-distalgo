@@ -1,6 +1,9 @@
 import numpy as np
 from block import Block
 from H import H
+import time
+import csv
+import os
 
 class Controller(process):
 
@@ -158,10 +161,6 @@ class Controller(process):
         send(('Received result',), to=p)
 
     def isEmptyBlock(block:Block):
-        # print(block.get_round(), self.curr_round)
-        # print(block.get_value())
-        # print(block.get_timestamp())
-        # print(block.get_prev_hash(), H(self.context.prev_block()))
         return (block.get_round() == self.curr_round and block.get_value() is None and block.get_timestamp() is None
                 and block.get_prev_hash() == H(self.context.prev_block()))
 
@@ -190,9 +189,16 @@ class Controller(process):
         send(('YouAreTraitor',), to=self.traitors)
         agr, val, liv = True, True, True
         round_number = 0
+        total_time = 0
+        total_process_time = 0
         while round_number < self.chain_length and agr and liv and val:
+
             output('Starting Next Round', level=params.logger_level)
             initialize_stakes(round_number)
+
+            process_start = time.process_time()
+            elapsed_start = time.perf_counter()
+
             self.livenesscheck[round_number] = set()
             proposerSet = Sortition(self.num_proposers, round_number, None, 'Proposer')
             if self.byzantine_proposer and not self.pbp:
@@ -212,6 +218,12 @@ class Controller(process):
             send(('start_BA', round_number), to=self.ps)
 
             await(each(p in ps, has=received(('done', round_number), from_=p)))
+
+            process_end = time.process_time()
+            elapsed_end = time.perf_counter()
+
+            total_time += elapsed_end - elapsed_start
+            total_process_time += process_end - process_start
 
             output('Results:', level=params.logger_level)
             tentative_blocks = set(block for status, block in self.results.values() if status == 'TENTATIVE')
@@ -278,6 +290,5 @@ class Controller(process):
         self.context.print_chain()
 
         send(('correctness', agr, val, liv, len(final_blocks) == 1), to=monitor or parent())
+        send(('performance', agr, val, liv, total_time), to=monitor or parent())
         send(('done',), to=parent())
-
-

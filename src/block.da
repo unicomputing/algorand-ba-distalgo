@@ -48,5 +48,3 @@ class Block(object):
         table.add_row([self.get_value(), self.__prev_hash[:7], H(self)[:7], self.__round, self.__timestamp])
 
         return str(table)
-        # return 'BlockObject: [Val = {}, PrevHash = {}, Round = {}, Timestamp = {}]'.\
-        #     format(self.__val, self.__prev_hash[:7], self.__round, self.__timestamp)
