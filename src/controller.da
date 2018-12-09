@@ -158,8 +158,12 @@ class Controller(process):
         send(('Received result',), to=p)
 
     def isEmptyBlock(block:Block):
-        return block.get_round() == self.curr_round and block.get_value() == None and block.get_timestamp() == None \
-            and block.get_prev_hash() == H(self.context.prev_block())
+        # print(block.get_round(), self.curr_round)
+        # print(block.get_value())
+        # print(block.get_timestamp())
+        # print(block.get_prev_hash(), H(self.context.prev_block()))
+        return (block.get_round() == self.curr_round and block.get_value() is None and block.get_timestamp() is None
+                and block.get_prev_hash() == H(self.context.prev_block()))
 
     def distribute_stakes(num_indices: int, total_stake: float):
         if num_indices == 0:
@@ -250,15 +254,15 @@ class Controller(process):
             else:
                 print('1) Agreement Satisfied')
                 for block in total_blocks:
-                    if len(final_blocks):
-                        self.context.add_block(('FINAL', block))
-                    else:
-                        self.context.add_block(('TENTATIVE', block))
                     if block in self.proposed_blocks[block.get_round()] or self.isEmptyBlock(block):
                         print('2) Validity Satisfied')
                     else:
                         print('2) Validity Violated')
                         val = False
+                    if len(final_blocks):
+                        self.context.add_block(('FINAL', block))
+                    else:
+                        self.context.add_block(('TENTATIVE', block))
                 if len(self.livenesscheck[round_number]) == 0:
                     print('3) Liveness Satisfied\n')
                 else:
