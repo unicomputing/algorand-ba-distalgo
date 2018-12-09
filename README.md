@@ -17,35 +17,35 @@ Install all the dependencies using pip:
                    [-tf TAU_FINAL] [-ms MAX_STEPS] [-bp] [-pbp]
                    [-bl BLOCK_SIZE] [-cl CL] [-ll]
                     
-  `-h, --help` - show the help message and exit \
-  `-u , --users` -  Number of users the algorand runs with, default = 10\
-  `-tr , --traitors` -  Number of traitors that algorand runs with, default = 0\
-  `-st , --stake-traitors` - Sum of fractions of stake held by all traitors default = 0.33\
-  `-lb , --lambda-block` -  Timeout for receiving a block default = 4secs\
-  `-ls , --lambda-step ` - Timeout for BA* step default = 4 secs\
-  `-Tf , --t_final` -  threshold of tau final for BA* default = 0.74\
+  `-h, --help`  Show the help message and exit \
+  `-u , --users`   Number of users the algorand runs with, `default = 10`\
+  `-tr , --traitors`   Number of traitors that algorand runs with, `default = 0`\
+  `-st , --stake-traitors`  Sum of fractions of stake held by all traitors `default = 0.33`\
+  `-lb , --lambda-block`   Timeout for receiving a block `default = 4`secs\
+  `-ls , --lambda-step `  Timeout for BA* step `default = 4`secs\
+  `-Tf , --t_final` h reshold of tau final for BA* `default = 0.74`\
   `-Ts , --t_step`
-                        Threshold of tau step for BA* default = 0.685\
+                        Threshold of tau step for BA* `default = 0.685`\
   `-ts , --tau_step`
-                        Expected # of committee members default =  5\
+                        Expected # of committee members `default =  5`\
   `-tp , --tau_proposer`
-                        expected # of block proposers default = 2\
+                        Expected # of block proposers `default = 2`\
   `-tf , --tau_final`
-                        expected # of final committee members default = 6\
+                        Expected # of final committee members `default = 6`\
   `-ms , --max_steps`
-                        maximum number of steps in BinaryBA* default = 50\
+                        Maximum number of steps in BinaryBA* `default = 50`\
   `-bp, --byzantine-proposer`
                         Force highest-priority proposer to be malicious
-                        regardless of stake-traitors default = False\
+                        regardless of stake-traitors `default = False`\
   `-pbp, --prevent-byzantine-proposer`
                         Prevent any proposer from being malicious (overrides
-                        byzantine-proposer) default = False  
+                        byzantine-proposer) `default = False `
   `-bl , --block-size`
-                        Size of a block in Bytes (bl <= 3) default = 0\
+                        Size of a block in Bytes (bl <= 3) `default = 0`\
   `-cl , --chain-length`
                         Length of Chain to generate, cl = number of final
-                        blocks. If -1, continue indefinitely. default = 5\
- ` -ll, --log_enable`     Print Log Outputs for all processes default = False
+                        blocks. If -1, continue indefinitely. `default = 5`\
+ ` -ll, --log_enable`     Print Log Outputs for all processes `default = False`
   
   
 ### Sample algorand run for 1 round and 10 users
