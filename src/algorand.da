@@ -83,9 +83,14 @@ class User(process):
 
     def ByzantineGossip(msg, to=None):
         """
+        The Byzantine gossip has two parts. If the message is a proposal then the user proposes two different blocks to
+        its neighbours. If the message is a committee gossip then the user either sends a malicious block or an empty
+        block on a random basis.
 
-        @param to:
-        @type to:
+        @param msg: The message tuple that has to be send to the neighbours in a byzantine way.
+        @type msg: L{tuple}
+        @param to: The set of users the message has to be sent to.
+        @type to: L{set} or None.
         @return:
         @rtype:
         """
