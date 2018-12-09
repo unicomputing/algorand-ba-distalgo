@@ -228,7 +228,6 @@ class Controller(process):
                 for x in final_blocks:
                     print('Final Block:\n{}'.format(x))
             else:
-                output('Failed to reach consensus', level=params.logger_level)
                 print('Tentative Blocks:')
                 for block in tentative_blocks:
                     print('List of users with this block: {}'.format(tentative_users[block]))
