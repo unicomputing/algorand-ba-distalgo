@@ -1,0 +1,161 @@
+from controller import Controller
+from algorand import User, create_gossip_neighbours, initial_context
+from parameters import Parameters
+import csv
+import numpy as np
+import time
+from copy import deepcopy
+
+class CorrectnessMonitor(process):
+
+    def setup():
+        self.storage = [True, True, True]
+        self.final = True
+        self.times = []
+        self.n_users = None
+        self.n_traitors = None
+        self.stake_traitors = None
+        self.tau_step = None
+        self.lambda_block = None
+        self.lambda_step = None
+        self.file = None
+        self.csvwriter = None
+        self.block_size = None
+
+    def receive(msg=('init_correctness_file',)):
+        self.file = open('correctness.csv', 'w')
+        self.csvwriter = csv.writer(self.file, lineterminator='\n')
+        self.csvwriter.writerow(['NumUsers', 'NumTraitors', 'TraitorStake', 'tau_step (No. of Committee members)',
+                                'lambda_block (Timeout for receiving a block)', 'lambda_step (Timeout for BA⋆ step)',
+                                'Consensus', 'Agreement', 'Validity', 'Liveness'])
+
+    def receive(msg=('init_performance_file',)):
+        self.file = open('performance.csv', 'w')
+        self.csvwriter = csv.writer(self.file, lineterminator='\n')
+        self.csvwriter.writerow(['NumUsers', 'NumTraitors', 'BlockSize', 'CommitteeSize', 'TraitorStake',
+                        'Agreement', 'Validity', 'Liveness', 'Time'])
+
+
+    def receive(msg=('init_correctness_params', n_users, n_traitors, stake_traitors, tau_step, lambda_block, lambda_step)):
+        self.n_users = n_users
+        self.n_traitors = n_traitors
+        self.stake_traitors = stake_traitors
+        self.tau_step = tau_step
+        self.lambda_block = lambda_block
+        self.lambda_step = lambda_step
+        self.storage = [True, True, True]
+        self.final = True
+
+    def receive(msg=('init_performance_params', n_users, n_traitors, stake_traitors, tau_step, block_size)):
+        self.n_users = n_users
+        self.n_traitors = n_traitors
+        self.stake_traitors = stake_traitors
+        self.tau_step = tau_step
+        self.block_size = block_size
+        self.storage = [True, True, True]
+        self.times = []
+
+    def receive(msg=('correctness', agr, val, liv, final)):
+        oldagr, oldval, oldliv = self.storage
+        self.final = self.final and final
+        self.storage = [agr and oldagr, val and oldval, liv and oldliv]
+
+    def receive(msg=('performance', agr, val, liv, time)):
+        oldagr, oldval, oldliv = self.storage
+        self.times.append(time)
+        self.storage = [agr and oldagr, val and oldval, liv and oldliv]
+
+    def receive(msg=('flush_correctness',)):
+        consensus = 'Final' if self.final else 'Tentative'
+        print([self.n_users, self.n_traitors, self.stake_traitors, self.tau_step, self.lambda_block,
+                                 self.lambda_step, consensus] + self.storage)
+        self.csvwriter.writerow([self.n_users, self.n_traitors, self.stake_traitors, self.tau_step, self.lambda_block,
+                                 self.lambda_step, consensus] + self.storage)
+        self.file.flush()
+
+    def receive(msg=('flush_performance',)):
+        consensus = 'Final' if self.final else 'Tentative'
+        print([self.n_users, self.n_traitors, self.block_size, self.tau_step, self.block_size, self.stake_traitors,
+                                consensus] + self.storage + [round(sum(self.times)*1.0/len(self.times), 4)])
+        self.csvwriter.writerow([self.n_users, self.n_traitors, self.block_size, self.tau_step, self.block_size, self.stake_traitors,
+                                consensus] + self.storage + [round(sum(self.times)*1.0/len(self.times), 4)])
+        self.file.flush()
+
+    def run():
+        await(received(('done',), from_=parent()))
+
+
+def main():
+    params = Parameters()
+    standard_values = [30, 5, 0.25, 10, 3, 3]
+    values = [np.linspace(20, 50, 6), np.linspace(0, 15, 5), np.linspace(0, 0.36, 6), np.linspace(5, 15, 5),
+              np.linspace(0.1, 4, 6), np.linspace(0.5, 4, 6)]
+    monitor = new(CorrectnessMonitor,())
+    start(monitor)
+    send(('init_correctness_file',), to=monitor)
+    for i in range(0, 0):
+        n_users, n_traitors, stake_traitors, params.tau_step, params.lambda_block, params.lambda_step = standard_values
+        for val in values[i]:
+            n_users = standard_values[0] if i != 0 else int(val)
+            n_traitors = standard_values[1] if i != 1 else int(val)
+            stake_traitors = standard_values[2] if i != 2 else val
+            params.tau_step = standard_values[3] if i != 3 else int(val)
+            params.lambda_block = standard_values[4] if i != 4 else val
+            params.lambda_step = standard_values[5] if i != 5 else val
+            print(n_users, n_traitors, stake_traitors, params.tau_step, params.lambda_block, params.lambda_step)
+            send(('init_correctness_params', n_users, n_traitors, stake_traitors, params.tau_step, params.lambda_block,
+                  params.lambda_step), to=monitor)
+            for k in range(3):
+                context = initial_context()
+                ps = new(User, num=n_users)
+                ctrl = new(Controller, (ps, params, context,
+                                        n_traitors, stake_traitors,
+                                        False, True, monitor))
+                users_list = list(ps)
+                for p in ps:
+                    neighbours_set = create_gossip_neighbours(users_list, p)
+                    setup(p, (neighbours_set, params, ctrl, context, True))
+                start(ps)
+                start(ctrl)
+                await(received(('done',), from_=ctrl))
+            send(('flush_correctness',), to=monitor)
+            time.sleep(2)
+
+    time.sleep(1)
+    send(('init_performance_file',), to=monitor)
+    params = Parameters()
+
+    template = [30, 5, 0.25, 10, 0]
+
+    n_users_vals = range(20, 51, 5)
+    n_traitors_vals = range(0, 17, 4)
+    traitor_stake_vals = [float(x) for x in np.concatenate([np.arange(0, 0.33, 0.06), np.array([0.33, 0.34])])]
+    tau_step_vals = range(5, 21, 5)
+    block_size_vals = [float(x) for x in np.concatenate([np.array([0.]), np.logspace(start=0, stop=10, num=11, base=2)])]
+
+    value_lists = [n_users_vals, n_traitors_vals, traitor_stake_vals, tau_step_vals, block_size_vals]
+
+    for i in range(5):
+        values = deepcopy(template)
+        for val in value_lists[i]:
+            values[i] = val
+            for _ in range(3):
+                n_users, n_traitors, traitor_stake, params.tau_step, block_size = values
+                params.tau_final = params.tau_step
+                output(n_users, n_traitors, traitor_stake, params.tau_step, block_size)
+                send(('init_performance_params', n_users, n_traitors, traitor_stake, params.tau_step, block_size), to=monitor)
+                context = initial_context()
+                ps = new(User, num=n_users)
+                ctrl = new(Controller, (ps, params, context, n_traitors, traitor_stake, False, True, monitor, block_size))
+
+                users_list = list(ps)
+                for p in ps:
+                    neighbours_set = create_gossip_neighbours(users_list, p)
+                    setup(p, (neighbours_set, params, ctrl, context, True, block_size))
+                start(ps)
+                start(ctrl)
+                await(received(('done',), from_=ctrl))
+            send(('flush_performance',), to=monitor)
+            time.sleep(2)
+
+    send(('done',), to=monitor)
