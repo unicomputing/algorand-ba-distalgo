@@ -76,17 +76,10 @@ class User(process):
         @return:
         @rtype:
         """
-        time_delay = self.localrandom.uniform(0, self.msg_delay)
-        a = 1
-        if await(self.msg_delay == 0):
-            a = 1
-        elif timeout(time_delay):
-            a = 1
-        if self.localrandom.random() >= self.loss_rate:
-            if to is None:
-                send(msg, to=self.neighbours)
-            else:
-                send(msg, to=to)
+        if to is None:
+            send(msg, to=self.neighbours)
+        else:
+            send(msg, to=to)
 
     def ByzantineGossip(msg, to=None):
 
@@ -123,27 +116,29 @@ class User(process):
 
 
     def receive(msg= ('CommitteeGossip', round_num, step, ps_id, h_last_block, value), from_= p):
-        # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)), level=params.logger_level)
-        if not sent(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
-            # output('Forwarding CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)), level=params.logger_level)
-            Gossip(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
-        # else:
-        #     output('Already Sent CommitteeGossip Once. Not Sending Again.', level=params.logger_level)
+        if self.localrandom.random() >= self.loss_rate:
+            # output('Received CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)), level=params.logger_level)
+            if not sent(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to= self.neighbours):
+                # output('Forwarding CommitteeGossip: {}'.format(('CommitteeGossip', round_num, step, ps_id, h_last_block, value)), level=params.logger_level)
+                Gossip(('CommitteeGossip', round_num, step, ps_id, h_last_block, value), to=self.neighbours)
+            # else:
+            #     output('Already Sent CommitteeGossip Once. Not Sending Again.', level=params.logger_level)
 
     def receive(msg=('Proposal', round_num, ps_id, block), from_=p):
-        if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
-            output('Received Proposal: {}'.format(('Proposal', round_num, ps_id, block)), level=params.logger_level)
-            block_hash = H(block)
-            if block_hash not in self.blockofhash:
-                self.blockofhash[block_hash] = block
-            if self.highest_priority_block[0] is None or self.highest_priority_block[0] < ps_id:
-                self.highest_priority_block = (ps_id, block)
-            elif self.highest_priority_block[0] is not None and self.highest_priority_block[0] == ps_id \
-                    and block != self.highest_priority_block[1] and ps_id != self:
-                self.highest_priority_block = (ps_id, Block(None, self.curr_round_num, H(self.context.prev_block())))
-            else:
-                return
-            Gossip(('Proposal', round_num, ps_id, block), to=self.neighbours)
+        if self.localrandom.random() >= self.loss_rate:
+            if not sent(('Proposal', round_num, ps_id, block), to=self.neighbours):
+                output('Received Proposal: {}'.format(('Proposal', round_num, ps_id, block)), level=params.logger_level)
+                block_hash = H(block)
+                if block_hash not in self.blockofhash:
+                    self.blockofhash[block_hash] = block
+                if self.highest_priority_block[0] is None or self.highest_priority_block[0] < ps_id:
+                    self.highest_priority_block = (ps_id, block)
+                elif self.highest_priority_block[0] is not None and self.highest_priority_block[0] == ps_id \
+                        and block != self.highest_priority_block[1] and ps_id != self:
+                    self.highest_priority_block = (ps_id, Block(None, self.curr_round_num, H(self.context.prev_block())))
+                else:
+                    return
+                Gossip(('Proposal', round_num, ps_id, block), to=self.neighbours)
 
     def receive(msg=('InCommitteeReply', round_num, step, votes)):
         self.CommitteeMemberCheck = votes
@@ -477,6 +472,7 @@ class User(process):
             send(('result', result), to=self.controller)
             await(received(('Received result',), from_=self.controller))
             send(('done', self.curr_round_num), to=self.controller)
+            output('Ending round {}'.format(self.curr_round_num), level=params.logger_level)
             self.curr_round_num += 1
 
         output('terminating User ', self, level=params.logger_level)
@@ -607,7 +603,7 @@ def main():
     params.tau_final = args['tau_final']
     params.max_steps = args['max_steps']
     params.logger_level = 50 if args['log_enable'] else 10
-    params.loss_rate = min(0, max(args['loss_rate'], 1))
+    params.loss_rate = max(0, min(args['loss_rate'], 1))
     params.msg_delay = args['msg_delay']
     byzantine_proposer = args['byzantine_proposer']
     block_size = min(args['block_size'], 3)
