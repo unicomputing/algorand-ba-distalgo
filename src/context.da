@@ -13,15 +13,15 @@ class Context():
 
     def add_block(self, block):
         if(not self.__last_block):
-            self.__first_block = block
-        self.__last_block = block
+            self.__first_block = block[1]
+        self.__last_block = block[1]
         self.__chain.append(block)
         self.__block_of_hash[H(block)] = block
 
     def prev_block(self):
         return self.__last_block
 
-    def add_fork(self, blocks: set):
+    def set_forked_blocks(self, blocks: set):
         self.__chain.append(blocks)
         self.__final_fork = True
 
@@ -33,9 +33,9 @@ class Context():
 
     def print_chain(self):
 
-        for block in self.__chain[:-1]:
+        for status, block in self.__chain[:-1]:
             table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp'])
-            table.title = 'Block {}'.format(block.get_round())
+            table.title = 'Block {} - {}'.format(block.get_round(), status)
             table.add_row([block.get_value(), block.get_prev_hash()[:7] if block.get_prev_hash() else None, H(block)[:7], block.get_round(), block.get_timestamp()])
 
             print(str(table))
@@ -46,16 +46,16 @@ class Context():
         if self.__final_fork:
             l = len(self.__chain[-1])
             table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp']*l)
-            table.title = 'Fork Results at Block {}'.format(len(self.__chain)-1)
+            table.title = 'Fork at Block {}'.format(len(self.__chain)-1)
             row = []
-            for block in self.__chain[-1]:
+            for status, block in self.__chain[-1]:
                 row += [block.get_value(), block.get_prev_hash()[:7] if block.get_prev_hash() else None, H(block)[:7], block.get_round(), block.get_timestamp()]
             table.add_row(row)
             print(str(table))
         else:
-            block = self.__chain[-1]
+            status, block = self.__chain[-1]
             table = PrettyTable(field_names=['Value', 'PrevHash', 'MyHash', 'Round', 'Timestamp'])
-            table.title = 'Block {}'.format(block.get_round())
+            table.title = 'Block {} - {}'.format(block.get_round(), status)
             table.add_row(
                 [block.get_value(), block.get_prev_hash()[:7] if block.get_prev_hash() else None, H(block)[:7],
                  block.get_round(), block.get_timestamp()])

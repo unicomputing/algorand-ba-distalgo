@@ -242,7 +242,8 @@ class Controller(process):
             print("\n Correctness Testing")
             total_blocks = set(tentative_blocks).union(set(final_blocks))
             if len(total_blocks) != 1:
-                self.context.forked_blocks(total_blocks)
+                self.context.set_forked_blocks({('TENTATIVE', block) for block in tentative_blocks}.union(
+                    {('FINAL', block) for block in final_blocks}))
                 print('1) Agreement Violated')
                 agr = False
                 if len(self.livenesscheck[round_number]) != 0:
@@ -250,7 +251,10 @@ class Controller(process):
             else:
                 print('1) Agreement Satisfied')
                 for block in total_blocks:
-                    self.context.add_block(block)
+                    if len(final_blocks):
+                        self.context.add_block(('FINAL', block))
+                    else:
+                        self.context.add_block(('TENTATIVE', block))
                     if block in self.proposed_blocks[block.get_round()] or self.isEmptyBlock(block):
                         print('2) Validity Satisfied')
                     else:

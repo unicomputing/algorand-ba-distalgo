@@ -458,7 +458,7 @@ class User(process):
             # output('Highest Priority Block:\n\nProposer: {}\n\n{}\n'.format(self.highest_priority_block[0], level=params.logger_level,
             #                                                                 self.highest_priority_block[1]))
             result = BA(self.context, self.curr_round_num, self.highest_priority_block[1])
-            self.context.add_block(result[1])
+            self.context.add_block(result)
             output('Completed BA*', level=params.logger_level)
 
             send(('result', result), to=self.controller)
@@ -478,7 +478,7 @@ def initial_context():
     """
     ctx = Context()
     starting_block = Block('start')
-    ctx.add_block(starting_block)
+    ctx.add_block(('INIT', starting_block))
     return ctx
 
 def find_smallest_coprime(n):
