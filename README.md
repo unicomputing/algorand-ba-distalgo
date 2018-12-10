@@ -93,3 +93,8 @@ Run the test as below
     python3 -m da Monitor.da
     
 The results of the tests will be saved in correctness.csv and performance.csv respectively.
+
+# Performance Graphs.
+Example of the performance plots. All the other are in src/performance_graphs folder.
+
+![cannot display image](https://github.com/unicomputing/algorand-ba-distalgo/blob/master/src/performance_graphs/Number_of_Users_vs_Latency.png "Number of Users vs Latency")
