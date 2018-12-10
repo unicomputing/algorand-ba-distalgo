@@ -1,6 +1,9 @@
 # Implementing Algorand Byzantine agreement BA* in DistAlgo
 <https://sites.google.com/a/stonybrook.edu/sbcs535/projects/algorand-ba-distalgo>
 
+# Python Documentation
+https://kchetan.github.io/Algorand-Documentation/
+
 # Prerequisites
 * Python 3.5 or Python 3.6
 * MacOS, Windows or Linux environment
