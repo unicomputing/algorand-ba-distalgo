@@ -37,8 +37,7 @@ Install all the dependencies using pip:
   `-ms , --max_steps`
                         Maximum number of steps in BinaryBA* `default = 50`\
   `-bp, --byzantine-proposer`
-                        Force highest-priority proposer to be malicious
-                        regardless of stake-traitors `default = False`\
+                        Force highest-priority proposer to be malicious `default = False`\
   `-pbp, --prevent-byzantine-proposer`
                         Prevent any proposer from being malicious `default = False `\
   `-bl , --block-size`
