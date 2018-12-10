@@ -22,7 +22,7 @@ Install all the dependencies using pip:
   `-st , --stake-traitors`  Sum of fractions of stake held by all traitors `default = 0.33`\
   `-lb , --lambda-block`   Timeout for receiving a block `default = 4`secs\
   `-ls , --lambda-step `  Timeout for BA* step `default = 4`secs\
-  `-Tf , --t_final` h reshold of tau final for BA* `default = 0.74`\
+  `-Tf , --t_final` Threshold of tau final for BA* `default = 0.74`\
   `-Ts , --t_step`
                         Threshold of tau step for BA* `default = 0.685`\
   `-ts , --tau_step`

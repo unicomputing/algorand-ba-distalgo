@@ -159,7 +159,7 @@ class User(process):
 
     def BlindSortition(round_num, step, role=None):
         """
-        Sends request to L{controller} to perform the soritition.
+        Sends request to L{controller} to perform the sortition.
 
         @param round_num: The current round of the BA.
         @type round_num: C{int}
@@ -192,6 +192,21 @@ class User(process):
             return self.CommitteeMemberCheck
 
     def BlindVerifySort(proc_id, role, round_num, step):
+        """
+        Sends a request to L{controller} to verify that a given proc_id is actually a committee member.
+        A committee member check will return the number of votes that member can cast (or 0 if not a member).
+        A proposer check will return 1 if user is a proposer in that round, and 0 if not.
+        @param proc_id: Process ID of original message sender
+        @type proc_id: L{User}
+        @param role: Role for which to be checked
+        @type role: C{str}
+        @param round_num: Round number for which to be checked
+        @type round_num: C{int}
+        @param step: Step number for which to be checked
+        @type step: C{int} or C{str}
+        @return: 1/0 in case of Proposer Check, and num_votes/0 in case of Committee Member Check
+        @rtype: C{int}
+        """
         assert role is None or role.lower() in 'proposers' or role.lower() in 'committee', \
             'Unknown role {}'.format(role)
         if role.lower() in 'committee':
