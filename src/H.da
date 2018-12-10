@@ -8,10 +8,10 @@ def H(block=None):
     This hash value acts as the unique reference to a Block, when finding consensus for Blocks, rather than
     using the entire block. This reduces the amount of space taken up by the keys for various proposed blocks
     at the time of calling CountVotes. A hash value is later matched back to the Block that is its origin, as
-    specified in Algorithm 3, Page 8, Gilad et. al - Algorand.
+    specified in Algorithm 3, (Page 8)- https://people.csail.mit.edu/nickolai/papers/gilad-algorand-eprint.pdf
 
-    :param block: Block for which hash must be computed
-    :return: SHA256 hash for the block
+    @param block: Block for which hash must be computed
+    @return: SHA256 hash for the block
     """
     serialized_block = pickle.dumps(block)
     h = hashlib.sha256(serialized_block)
