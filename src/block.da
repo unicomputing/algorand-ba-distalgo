@@ -34,7 +34,7 @@ class Block(object):
         """
         Sets the previous block's hash for this block.
         @param hash: A hash value, which is a 256 byte string
-        @type hash: L{H{Block}}
+        @type hash: L{H(Block)}
         @return: None
         @rtype: C{NoneType}
         """

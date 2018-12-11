@@ -245,7 +245,7 @@ class User(process):
         @type msg: C{Tuple}
         @return: Returns the number of votes that can be cast by the User named initiator_id, and the value that has been
          voted for by that User.
-        @rtype: C{int}, L{User}, L{H(Block)}
+        @rtype: C{int}, L{User}, L{H(L{Block})}
         """
         (round_num, step, initiator_id, hprev, value) = msg
 
@@ -273,7 +273,7 @@ class User(process):
         @param step: The current step of BA that is in progress.
         @type step: C{int}
         @param value: The highest priority block's hash that has been received by the user.
-        @type value: L{H(Block)}
+        @type value: L{H(L{Block})}
         @return: None
         @rtype: C{NoneType}
         """
@@ -310,7 +310,7 @@ class User(process):
         @param lambda_value: Timeout for receiving a block
         @type lambda_value: C{int}
         @return: Returns the hash of the block that has maximum votes.
-        @rtype: L{H(Block)}
+        @rtype: L{H(L{Block})}
         """
         start = time.time()
         counts = dict()
@@ -355,9 +355,9 @@ class User(process):
         @param round: The current round of the BA.
         @type round: C{int}
         @param block_hash: The highest priority block's hash that has been received by the user.
-        @type block_hash: L{H(Block)}
+        @type block_hash: L{H(L{Block})}
         @return: Returns the hash of the block that has been chosen.
-        @rtype: L{H(Block)}
+        @rtype: L{H(L{Block})}
         """
 
         step = 1
@@ -431,9 +431,9 @@ class User(process):
         @param round: The current round of the BA.
         @type round: C{int}
         @param hblock: The highest priority block's hash that has been received by the user.
-        @type hblock: L{H(Block)}
+        @type hblock: L{H(L{Block})}
         @return: Returns the hash of the block that has been chosen.
-        @rtype: L{H(Block)}
+        @rtype: L{H(L{Block})}
         """
         output('Reduction', level=params.logger_level)
         CommitteeVote(context, round, "REDUCTION_ONE", hblock)
@@ -464,7 +464,7 @@ class User(process):
         As in 7.1 (page 8) - https://people.csail.mit.edu/nickolai/papers/gilad-algorand-eprint.pdf
 
         @param block_hash: Block's hash that has come to the consensus.
-        @type block_hash: L{H(Block)}
+        @type block_hash: L{H(L{Block})}
         @return: The block corresponding the hash.
         @rtype: L{Block}
         """
@@ -482,9 +482,9 @@ class User(process):
         @param round_num: The current round of the BA.
         @type round_num: C{int}
         @param hash_last_block: The hash of the last block in the ledger.
-        @type hash_last_block: L{H(Block)}
+        @type hash_last_block: L{H(L{Block})}
         @return: The hash of the empty block created.
-        @rtype: L{H(Block)}
+        @rtype: L{H(L{Block})}
         """
         block = Block(None, round_num, hash_last_block)
         block_hash = H(block)

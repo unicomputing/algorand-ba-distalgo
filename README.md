@@ -1,6 +1,9 @@
 # Implementing Algorand Byzantine agreement BA* in DistAlgo
 <https://sites.google.com/a/stonybrook.edu/sbcs535/projects/algorand-ba-distalgo>
 
+# Python Documentation
+https://kchetan.github.io/Algorand-Documentation/
+
 # Prerequisites
 * Python 3.5 or Python 3.6
 * MacOS, Windows or Linux environment
@@ -34,8 +37,7 @@ Install all the dependencies using pip:
   `-ms , --max_steps`
                         Maximum number of steps in BinaryBA* `default = 50`\
   `-bp, --byzantine-proposer`
-                        Force highest-priority proposer to be malicious
-                        regardless of stake-traitors `default = False`\
+                        Force highest-priority proposer to be malicious `default = False`\
   `-pbp, --prevent-byzantine-proposer`
                         Prevent any proposer from being malicious `default = False `\
   `-bl , --block-size`
@@ -92,3 +94,8 @@ Run the test as below
     python3 -m da Monitor.da
     
 The results of the tests will be saved in correctness.csv and performance.csv respectively.
+
+# Performance Graphs.
+Example of the performance plots. All the other are in src/performance_graphs folder.
+
+![cannot display image](https://github.com/unicomputing/algorand-ba-distalgo/blob/master/src/performance_graphs/Number_of_Users_vs_Latency.png "Number of Users vs Latency")
