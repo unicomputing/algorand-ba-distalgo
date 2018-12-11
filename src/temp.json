@@ -1,1 +1,0 @@
-{"x": [20, 25, 30, 35, 40, 45, 50], "y": [8.9873, 9.1196, 10.0402, 10.599, 13.1459, 13.9151, 17.2995], "xlabel": "Number of Users ", "ylabel": "Latency (s)", "title": "Number of Users vs Latency"}
