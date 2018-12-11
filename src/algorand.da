@@ -76,6 +76,11 @@ class User(process):
         @param to: The current step of BA that is in progress.
         @type to: C{int}
         """
+        # delay = self.localrandom.uniform(0, self.msg_delay)
+        # if await(self.msg_delay == 0):
+        #     pass
+        # elif timeout(delay):
+        #     pass
         if to is None:
             send(msg, to=self.neighbours)
         else:
@@ -463,6 +468,8 @@ class User(process):
         @return: The block corresponding the hash.
         @rtype: L{Block}
         """
+        if block_hash is None:
+            return Block(None, self.curr_round_num, H(self.context.prev_block()))
         if block_hash not in self.blockofhash:
             send(('WhatIsBlock', block_hash), to=self.controller)
             await(block_hash in self.blockofhash)

@@ -25,11 +25,13 @@ class Monitor(process):
         self.p_file = None
         self.p_csvwriter = None
         self.block_size = None
+        self.loss_rate = None
         self.labels = [ ['Number of Users ', 'Number of Users vs Latency'], 
                         ['% Malicious Users', ' % Malicious Users vs Latency'],
                         ['% Stake of Malicious Users', '% Stake of Malicious Users vs Latency'],
                         ['Committee Size', 'Committee Size vs Latency'],
-                        ['Block Size (KB)', 'Block Size vs Latency']
+                        ['Block Size (KB)', 'Block Size vs Latency'],
+                        ['Loss Rate', 'Message Loss Rate vs Latency']
                       ]
         self.plot_file = open('temp.json', 'w')
         self.plot_data = [[],[]]
@@ -38,19 +40,20 @@ class Monitor(process):
         self.p_file = open('performance.csv', 'w')
         self.p_csvwriter = csv.writer(self.p_file, lineterminator='\n')
         self.p_csvwriter.writerow(['NumUsers', 'NumTraitors', 'BlockSize', 'CommitteeSize', 'TraitorStake', 'Consensus',
-                        'Agreement', 'Validity', 'Liveness', 'Time'])
+                                   'LossRate', 'Agreement', 'Validity', 'Liveness', 'Time'])
 
         self.c_file = open('correctness.csv', 'w')
         self.c_csvwriter = csv.writer(self.c_file, lineterminator='\n')
         self.c_csvwriter.writerow(['NumUsers', 'NumTraitors', 'TraitorStake', 'CommitteeSize',
-                                'BlockSize', 'Consensus', 'Agreement', 'Validity', 'Liveness'])
+                                   'BlockSize', 'Consensus', 'LossRate', 'Agreement', 'Validity', 'Liveness'])
 
-    def receive(msg=('init_params', n_users, n_traitors, stake_traitors, tau_step, block_size)):
+    def receive(msg=('init_params', n_users, n_traitors, stake_traitors, tau_step, block_size, loss_rate)):
         self.n_users = n_users
         self.n_traitors = n_traitors
         self.stake_traitors = stake_traitors
         self.tau_step = tau_step
         self.block_size = block_size
+        self.loss_rate = loss_rate
         self.storage = [True, True, True]
         self.times = []
 
@@ -65,27 +68,44 @@ class Monitor(process):
         self.storage = [agr and oldagr, val and oldval, liv and oldliv]
 
     def get_xaxis():
-        switcher = { 0: self.n_users, 1: self.n_traitors*100.0/self.n_users, 2: self.stake_traitors * 100, 3: self.tau_step, 4: self.block_size} 
+        switcher = {
+            0: self.n_users,
+            1: self.n_traitors*100.0/self.n_users,
+            2: self.stake_traitors * 100,
+            3: self.tau_step,
+            4: self.block_size,
+            5: self.loss_rate
+        }
         return switcher[self.number]
 
     def receive(msg=('flush',)):
         consensus = 'Final' if self.final else 'Tentative'
 
-        self.c_csvwriter.writerow([self.n_users, self.n_traitors*100.0/self.n_users, self.stake_traitors * 100, self.tau_step, self.block_size, consensus] 
-            + self.storage)
+        self.c_csvwriter.writerow([self.n_users, self.n_traitors*100.0/self.n_users, self.stake_traitors * 100,
+                                   self.tau_step, self.block_size, consensus, self.loss_rate]
+                                  + self.storage)
         self.c_file.flush()
 
-        print([self.n_users, self.n_traitors*100.0/self.n_users, self.block_size, self.tau_step, self.block_size, self.stake_traitors *100,
-                                consensus] + self.storage + [round(sum(self.times)*1.0/len(self.times), 4)])
-        self.p_csvwriter.writerow([self.n_users, self.n_traitors*100.0/self.n_users, self.block_size, self.tau_step, self.block_size, self.stake_traitors * 100,
-                                consensus] + self.storage + [round(sum(self.times)*1.0/len(self.times), 4)])
+        print([self.n_users, self.n_traitors*100.0/self.n_users, self.block_size, self.tau_step, self.block_size,
+               self.stake_traitors *100, consensus, self.loss_rate]
+              + self.storage
+              + [round(sum(self.times)*1.0/len(self.times), 4)])
+        self.p_csvwriter.writerow([self.n_users, self.n_traitors*100.0/self.n_users, self.block_size,
+                                   self.tau_step, self.block_size, self.stake_traitors * 100,
+                                   consensus, self.loss_rate]
+                                  + self.storage
+                                  + [round(sum(self.times)*1.0/len(self.times), 4)])
         self.p_file.flush()
 
         self.plot_data[0].append(self.get_xaxis())
         self.plot_data[1].append(round(sum(self.times)*1.0/len(self.times), 4))
 
     def receive(msg=('plot',)):
-        obj = {'x': self.plot_data[0], 'y': self.plot_data[1], 'xlabel' : self.labels[self.number][0], 'ylabel': 'Latency (s)', 'title': self.labels[self.number][1]}
+        obj = {'x': self.plot_data[0],
+               'y': self.plot_data[1],
+               'xlabel' : self.labels[self.number][0],
+               'ylabel': 'Latency (s)',
+               'title': self.labels[self.number][1]}
         self.plot_file.write(json.dumps(obj) + '\n')
         self.plot_file.flush()
         self.number +=1
@@ -97,29 +117,34 @@ class Monitor(process):
 
 def main():
     params = Parameters()
+    params.max_steps = 15
+    # params.logger_level = 20
     monitor = new(Monitor,())
     start(monitor)
     send(('init_files',), to=monitor)
 
-    template = [30, 5, 0.25, 10, 0]
+    template = [30, 5, 0.25, 10, 0, 0]
 
     n_users_vals = range(20, 51, 5)
     n_traitors_vals = range(0, 17, 4)
     traitor_stake_vals = [float(x) for x in np.concatenate([np.arange(0, 0.33, 0.06), np.array([0.33, 0.34])])]
     tau_step_vals = range(5, 21, 5)
     block_size_vals = [float(x) for x in np.linspace(0, 3, 7)]
+    loss_rate_vals = [float(x) for x in np.linspace(0, 1, 11)]
 
-    value_lists = [n_users_vals, n_traitors_vals, traitor_stake_vals, tau_step_vals, block_size_vals]
+    value_lists = [n_users_vals, n_traitors_vals, traitor_stake_vals, tau_step_vals,
+                   block_size_vals, loss_rate_vals]
 
-    for i in range(0,5):
+    for i in range(6):
         values = deepcopy(template)
         for val in value_lists[i]:
             values[i] = val
             for _ in range(3):
-                n_users, n_traitors, traitor_stake, params.tau_step, block_size = values
+                n_users, n_traitors, traitor_stake, params.tau_step, block_size, params.loss_rate = values
                 params.tau_final = params.tau_step
-                output(n_users, n_traitors, traitor_stake, params.tau_step, block_size)
-                send(('init_params', n_users, n_traitors, traitor_stake, params.tau_step, block_size), to=monitor)
+                output(n_users, n_traitors, traitor_stake, params.tau_step, block_size, params.loss_rate)
+                send(('init_params', n_users, n_traitors, traitor_stake, params.tau_step,
+                      block_size, params.loss_rate), to=monitor)
                 context = initial_context()
                 ps = new(User, num=n_users)
                 ctrl = new(Controller, (ps, params, context, n_traitors, traitor_stake, False, True, monitor, block_size))

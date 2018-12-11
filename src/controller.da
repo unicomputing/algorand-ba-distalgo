@@ -73,8 +73,11 @@ class Controller(process):
         send(('IsProposerReply', round_num, int(q in self.proposers)), to=p)
 
     def receive(msg=('WhatIsBlock', block_hash), from_=p):
+        output('Received WhatIsBlock request for {}'.format(block_hash))
         if block_hash in self.blockofhash[self.curr_round]:
-            send(('BlockOfHashIs', block_hash, self.blockofhash[block_hash]), to=p)
+            send(('BlockOfHashIs', block_hash, self.blockofhash[self.curr_round][block_hash]), to=p)
+        else:
+            send(('BlockOfHashIs', block_hash, Block(None, self.curr_round, H(self.context.prev_block()))), to=p)
 
     def Sortition(num_role, round, step, role):
         """

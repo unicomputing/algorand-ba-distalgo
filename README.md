@@ -77,7 +77,7 @@ Monitor.da runs correctness and performance tests to check Safety, Liveness and 
 * Checks correctness with increasing number of users.
 * Checks correctness with increasing number of traitors.
 * Checks correctness with increasing stakes of traitors.
-* Checks correctness with increasing timeout value.
+* Checks correctness with increasing number of committee members.
 
 The Monitor runs the tests for combination of following set of parameters
 * No.of Users range 20-50
@@ -85,6 +85,7 @@ The Monitor runs the tests for combination of following set of parameters
 * Traitor stakes range 0-0.36
 * No.of committee members in step range from 5-20
 * Block size range from approximately 0-3Kb
+* Message Loss Probability in range 0-1 in increments of 0.1
 
 Run the test as below
 
